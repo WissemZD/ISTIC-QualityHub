@@ -1,0 +1,2602 @@
+<!DOCTYPE html>
+<html lang="fr" data-theme="light">
+<!--
+  ╔══════════════════════════════════════════════════════════════════════╗
+  ║   TICKET MANAGER v1.0 — ISTIC-QualityHub Suite                      ║
+  ║   ISO 21001:2018 · ISO 27002:2022 · Standalone HTML Application      ║
+  ║   © 2025 ISTIC, Université de Carthage — Tous droits réservés        ║
+  ║   Usage strictement interne. Reproduction interdite sans autorisation║
+  ╚══════════════════════════════════════════════════════════════════════╝
+
+  INSTRUCTIONS D'UTILISATION:
+  1. Ouvrir ce fichier dans Chrome, Firefox ou Edge (v90+)
+  2. Aller dans Paramètres → configurer l'établissement, logo, équipe
+  3. Créer des tickets depuis le menu "Nouveau ticket" ou touche [N]
+  4. Les données sont sauvegardées dans le localStorage du navigateur
+  5. Exporter régulièrement via Paramètres → Export JSON (backup)
+
+  OBFUSCATION (production):
+  npx javascript-obfuscator TicketManager_v1.html --output TicketManager_v1.min.html
+  --compact true --string-array true --rotate-string-array true
+
+  INTÉGRATION EMAIL (backend optionnel):
+  Remplacer handleMailto() par EmailJS / Formspree / endpoint SMTP personnalisé
+  Voir section // SECTION: EMAIL-INTEGRATION dans le JS
+-->
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta http-equiv="Content-Security-Policy" content="default-src 'self' https://fonts.googleapis.com https://fonts.gstatic.com https://cdn.jsdelivr.net; script-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com;">
+<meta name="description" content="Ticket Manager — Gestion des demandes d'intervention IT & technique">
+<meta name="robots" content="noindex, nofollow">
+<title>Ticket Manager v1.0 — ISTIC-QualityHub</title>
+
+<!-- Google Fonts: Syne (display) + DM Mono (data) + Outfit (body) -->
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=Outfit:wght@300;400;500;600&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+
+<!-- Chart.js (graphiques dashboard) -->
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.3/dist/chart.umd.min.js" integrity="sha256-oVuMEMHCXkKMFMCOFBXmj0TRqFgOW4mJVV4aQ+VPZYI=" crossorigin="anonymous"></script>
+
+<style>
+/* ═══════════════════════════════════════════════════
+   SECTION: DESIGN SYSTEM — Variables & Reset
+   Réutilisable pour toute la suite ISTIC-QualityHub
+   ═══════════════════════════════════════════════════ */
+:root {
+  /* — Palette principale */
+  --primary:       #0f4c81;
+  --primary-2:     #1a6abf;
+  --primary-l:     #dbeafe;
+  --primary-ll:    #eff6ff;
+  --accent:        #f97316;
+  --accent-l:      #fff7ed;
+  --accent-2:      #ea6c08;
+
+  /* — Sémantique statuts */
+  --status-new:       #6366f1;
+  --status-new-l:     #eef2ff;
+  --status-progress:  #0ea5e9;
+  --status-progress-l:#f0f9ff;
+  --status-resolved:  #10b981;
+  --status-resolved-l:#ecfdf5;
+  --status-closed:    #64748b;
+  --status-closed-l:  #f8fafc;
+  --status-overdue:   #ef4444;
+  --status-overdue-l: #fef2f2;
+
+  /* — Priorités */
+  --prio-critical: #dc2626;
+  --prio-high:     #ea580c;
+  --prio-medium:   #ca8a04;
+  --prio-low:      #16a34a;
+
+  /* — Neutrals (Light mode) */
+  --bg:            #f0f4f8;
+  --bg-2:          #e2e8f0;
+  --surface:       #ffffff;
+  --surface-2:     #f8fafc;
+  --border:        #e2e8f0;
+  --border-2:      #cbd5e1;
+  --text:          #0f172a;
+  --text-2:        #334155;
+  --text-muted:    #64748b;
+  --text-hint:     #94a3b8;
+
+  /* — Typography */
+  --font-display:  'Syne', sans-serif;
+  --font-body:     'Outfit', sans-serif;
+  --font-mono:     'DM Mono', monospace;
+
+  /* — Spacing scale */
+  --sp-1: 4px; --sp-2: 8px; --sp-3: 12px; --sp-4: 16px;
+  --sp-5: 20px; --sp-6: 24px; --sp-8: 32px; --sp-10: 40px;
+
+  /* — Shape */
+  --r-sm: 6px; --r: 10px; --r-lg: 16px; --r-xl: 24px;
+
+  /* — Shadow */
+  --shadow-sm: 0 1px 3px rgba(15,76,129,.06), 0 1px 2px rgba(15,76,129,.04);
+  --shadow:    0 4px 16px rgba(15,76,129,.08), 0 2px 6px rgba(15,76,129,.05);
+  --shadow-lg: 0 12px 40px rgba(15,76,129,.14), 0 4px 12px rgba(15,76,129,.08);
+
+  /* — Sidebar */
+  --sidebar-w: 256px;
+  --sidebar-bg: #0a2d4f;
+  --sidebar-text: rgba(255,255,255,.75);
+  --sidebar-active: rgba(255,255,255,.12);
+  --sidebar-hover: rgba(255,255,255,.07);
+
+  /* — Transition */
+  --trans: 180ms cubic-bezier(.4,0,.2,1);
+  --trans-fast: 100ms ease;
+}
+
+[data-theme="dark"] {
+  --bg:         #0a0f1a;
+  --bg-2:       #111827;
+  --surface:    #1a2332;
+  --surface-2:  #1f2d3f;
+  --border:     #2d3f55;
+  --border-2:   #374659;
+  --text:       #f0f6ff;
+  --text-2:     #cbd5e1;
+  --text-muted: #94a3b8;
+  --text-hint:  #64748b;
+  --primary-l:  rgba(26,106,191,.2);
+  --primary-ll: rgba(26,106,191,.1);
+  --sidebar-bg: #060d18;
+  --shadow:     0 4px 16px rgba(0,0,0,.4);
+  --shadow-lg:  0 12px 40px rgba(0,0,0,.5);
+}
+
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+html { scroll-behavior: smooth; }
+body {
+  font-family: var(--font-body);
+  font-size: 14px;
+  color: var(--text);
+  background: var(--bg);
+  min-height: 100vh;
+  display: flex;
+  overflow-x: hidden;
+  -webkit-font-smoothing: antialiased;
+}
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after { animation-duration: .01ms !important; transition-duration: .01ms !important; }
+}
+input, select, textarea, button { font-family: var(--font-body); }
+a { color: var(--primary-2); text-decoration: none; }
+img { max-width: 100%; }
+
+/* ═══════════════════════════════════════════════════
+   SECTION: SIDEBAR
+   ═══════════════════════════════════════════════════ */
+.sidebar {
+  width: var(--sidebar-w);
+  background: var(--sidebar-bg);
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+  position: fixed;
+  left: 0; top: 0; bottom: 0;
+  z-index: 100;
+  transition: width var(--trans);
+  overflow: hidden;
+}
+.sidebar-brand {
+  padding: var(--sp-5) var(--sp-5) var(--sp-4);
+  border-bottom: 1px solid rgba(255,255,255,.08);
+  display: flex;
+  align-items: center;
+  gap: var(--sp-3);
+}
+.brand-logo {
+  width: 44px; height: 44px;
+  border-radius: var(--r);
+  background: linear-gradient(135deg, var(--primary-2), var(--accent));
+  display: flex; align-items: center; justify-content: center;
+  font-family: var(--font-display);
+  font-weight: 800; font-size: 18px; color: #fff;
+  cursor: pointer; overflow: hidden; flex-shrink: 0;
+  transition: transform var(--trans);
+  border: 2px solid rgba(255,255,255,.15);
+}
+.brand-logo:hover { transform: scale(1.05); }
+.brand-logo img { width: 44px; height: 44px; object-fit: cover; border-radius: calc(var(--r) - 2px); }
+.brand-info { flex: 1; overflow: hidden; }
+.brand-name {
+  font-family: var(--font-display);
+  font-weight: 700; font-size: 13px; color: #fff;
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+  line-height: 1.2;
+}
+.brand-sub { font-size: 10px; color: rgba(255,255,255,.4); text-transform: uppercase; letter-spacing: .06em; margin-top: 2px; }
+
+.sidebar-nav { flex: 1; padding: var(--sp-4) var(--sp-3); overflow-y: auto; }
+.nav-section-label {
+  font-size: 9px; font-weight: 600; text-transform: uppercase;
+  letter-spacing: .1em; color: rgba(255,255,255,.3);
+  padding: var(--sp-4) var(--sp-3) var(--sp-2);
+}
+.nav-item {
+  display: flex; align-items: center; gap: var(--sp-3);
+  padding: 10px var(--sp-3);
+  border-radius: var(--r-sm);
+  color: var(--sidebar-text);
+  cursor: pointer;
+  transition: background var(--trans), color var(--trans);
+  margin-bottom: 2px;
+  font-size: 13px; font-weight: 500;
+  border: none; background: none; width: 100%; text-align: left;
+}
+.nav-item:hover { background: var(--sidebar-hover); color: rgba(255,255,255,.9); }
+.nav-item.active { background: var(--sidebar-active); color: #fff; }
+.nav-item.active .nav-icon { color: var(--accent); }
+.nav-icon { width: 18px; height: 18px; flex-shrink: 0; opacity: .8; }
+.nav-badge {
+  margin-left: auto; background: var(--accent);
+  color: #fff; border-radius: 20px;
+  font-size: 10px; font-weight: 700;
+  padding: 1px 7px; min-width: 18px; text-align: center;
+}
+
+.sidebar-footer {
+  padding: var(--sp-4) var(--sp-3);
+  border-top: 1px solid rgba(255,255,255,.08);
+}
+.sidebar-footer-row {
+  display: flex; align-items: center; gap: var(--sp-3);
+  padding: 8px var(--sp-3);
+  border-radius: var(--r-sm);
+  color: rgba(255,255,255,.5);
+  font-size: 12px;
+}
+.version-tag { font-family: var(--font-mono); font-size: 10px; color: rgba(255,255,255,.25); }
+
+/* ═══════════════════════════════════════════════════
+   SECTION: MAIN LAYOUT
+   ═══════════════════════════════════════════════════ */
+.main {
+  margin-left: var(--sidebar-w);
+  flex: 1;
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+.topbar {
+  height: 60px;
+  background: var(--surface);
+  border-bottom: 1px solid var(--border);
+  display: flex;
+  align-items: center;
+  padding: 0 var(--sp-8);
+  gap: var(--sp-4);
+  position: sticky; top: 0; z-index: 50;
+  box-shadow: var(--shadow-sm);
+}
+.topbar-title {
+  font-family: var(--font-display);
+  font-size: 17px; font-weight: 700; color: var(--text);
+  flex: 1;
+}
+.topbar-actions { display: flex; align-items: center; gap: var(--sp-3); }
+
+.content { padding: var(--sp-8); flex: 1; }
+.view { display: none; animation: fadeUp .2s ease; }
+.view.active { display: block; }
+@keyframes fadeUp {
+  from { opacity: 0; transform: translateY(8px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+/* ═══════════════════════════════════════════════════
+   SECTION: COMPONENTS — Buttons
+   ═══════════════════════════════════════════════════ */
+.btn {
+  display: inline-flex; align-items: center; gap: var(--sp-2);
+  padding: 9px 18px;
+  border-radius: var(--r);
+  border: 1px solid var(--border);
+  background: var(--surface);
+  color: var(--text-2);
+  font-size: 13px; font-weight: 600;
+  cursor: pointer;
+  transition: all var(--trans);
+  white-space: nowrap;
+  font-family: var(--font-body);
+}
+.btn:hover { background: var(--surface-2); border-color: var(--border-2); }
+.btn-primary {
+  background: var(--primary);
+  color: #fff; border-color: transparent;
+  box-shadow: 0 2px 8px rgba(15,76,129,.3);
+}
+.btn-primary:hover { background: var(--primary-2); box-shadow: 0 4px 14px rgba(15,76,129,.4); }
+.btn-accent {
+  background: var(--accent); color: #fff; border-color: transparent;
+  box-shadow: 0 2px 8px rgba(249,115,22,.3);
+}
+.btn-accent:hover { background: var(--accent-2); }
+.btn-ghost { background: transparent; border-color: transparent; color: var(--text-muted); }
+.btn-ghost:hover { background: var(--bg); color: var(--text); }
+.btn-danger { background: #fef2f2; color: #dc2626; border-color: #fecaca; }
+.btn-danger:hover { background: #fee2e2; }
+.btn-sm { padding: 6px 12px; font-size: 12px; }
+.btn-xs { padding: 4px 9px; font-size: 11px; border-radius: var(--r-sm); }
+.btn-icon { padding: 8px; border-radius: var(--r); width: 36px; height: 36px; justify-content: center; }
+
+/* ═══════════════════════════════════════════════════
+   SECTION: COMPONENTS — Cards
+   ═══════════════════════════════════════════════════ */
+.card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--r-lg);
+  padding: var(--sp-6);
+  box-shadow: var(--shadow-sm);
+}
+.card-header {
+  display: flex; align-items: center; justify-content: space-between;
+  margin-bottom: var(--sp-5);
+  gap: var(--sp-4);
+}
+.card-title {
+  font-family: var(--font-display);
+  font-size: 15px; font-weight: 700; color: var(--text);
+}
+.card-subtitle { font-size: 12px; color: var(--text-muted); margin-top: 2px; }
+
+/* ═══════════════════════════════════════════════════
+   SECTION: COMPONENTS — Badges & Tags
+   ═══════════════════════════════════════════════════ */
+.badge {
+  display: inline-flex; align-items: center; gap: 5px;
+  padding: 3px 10px; border-radius: 20px;
+  font-size: 11px; font-weight: 600; white-space: nowrap;
+}
+.badge::before { content: ''; width: 5px; height: 5px; border-radius: 50%; background: currentColor; }
+.badge-new      { background: var(--status-new-l);      color: var(--status-new); }
+.badge-progress { background: var(--status-progress-l); color: var(--status-progress); }
+.badge-resolved { background: var(--status-resolved-l); color: var(--status-resolved); }
+.badge-closed   { background: var(--status-closed-l);   color: var(--status-closed); }
+.badge-overdue  { background: var(--status-overdue-l);  color: var(--status-overdue); animation: pulse 2s infinite; }
+@keyframes pulse { 0%,100%{opacity:1} 50%{opacity:.6} }
+
+.prio-badge { padding: 2px 9px; border-radius: 20px; font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: .04em; }
+.prio-critical { background: #fee2e2; color: var(--prio-critical); }
+.prio-high     { background: #ffedd5; color: var(--prio-high); }
+.prio-medium   { background: #fef9c3; color: var(--prio-medium); }
+.prio-low      { background: #dcfce7; color: var(--prio-low); }
+
+/* ═══════════════════════════════════════════════════
+   SECTION: COMPONENTS — Forms
+   ═══════════════════════════════════════════════════ */
+.form-group { display: flex; flex-direction: column; gap: 6px; }
+.form-group.full { grid-column: 1/-1; }
+label {
+  font-size: 11px; font-weight: 600; color: var(--text-muted);
+  text-transform: uppercase; letter-spacing: .06em;
+}
+.form-control {
+  border: 1.5px solid var(--border);
+  border-radius: var(--r);
+  padding: 9px 12px;
+  font-size: 13px; color: var(--text);
+  background: var(--surface);
+  width: 100%;
+  transition: border-color var(--trans), box-shadow var(--trans);
+  outline: none;
+}
+.form-control:focus {
+  border-color: var(--primary-2);
+  box-shadow: 0 0 0 3px rgba(26,106,191,.12);
+}
+.form-control.error { border-color: var(--prio-critical); box-shadow: 0 0 0 3px rgba(220,38,38,.1); }
+textarea.form-control { resize: vertical; min-height: 80px; line-height: 1.5; }
+.form-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 14px; }
+.form-row { display: flex; gap: 14px; align-items: flex-end; }
+.input-group { display: flex; gap: 0; }
+.input-group .form-control { border-radius: var(--r) 0 0 var(--r); border-right: none; }
+.input-group .btn { border-radius: 0 var(--r) var(--r) 0; }
+.field-error { font-size: 11px; color: var(--prio-critical); margin-top: 4px; }
+.char-count { font-size: 10px; color: var(--text-hint); text-align: right; margin-top: 2px; }
+
+/* ═══════════════════════════════════════════════════
+   SECTION: COMPONENTS — Modal
+   ═══════════════════════════════════════════════════ */
+.modal-backdrop {
+  position: fixed; inset: 0;
+  background: rgba(0,0,0,.45);
+  backdrop-filter: blur(4px);
+  z-index: 1000;
+  display: flex; align-items: center; justify-content: center;
+  padding: var(--sp-5);
+  opacity: 0; pointer-events: none;
+  transition: opacity .2s ease;
+}
+.modal-backdrop.open { opacity: 1; pointer-events: all; }
+.modal {
+  background: var(--surface);
+  border-radius: var(--r-xl);
+  width: 100%; max-width: 600px;
+  max-height: 90vh; overflow-y: auto;
+  box-shadow: var(--shadow-lg);
+  transform: translateY(20px) scale(.97);
+  transition: transform .22s cubic-bezier(.34,1.56,.64,1);
+}
+.modal-backdrop.open .modal { transform: none; }
+.modal-lg { max-width: 780px; }
+.modal-header {
+  padding: var(--sp-6) var(--sp-6) var(--sp-5);
+  border-bottom: 1px solid var(--border);
+  display: flex; align-items: flex-start; justify-content: space-between; gap: var(--sp-4);
+  position: sticky; top: 0; background: var(--surface); z-index: 1;
+  border-radius: var(--r-xl) var(--r-xl) 0 0;
+}
+.modal-title { font-family: var(--font-display); font-size: 18px; font-weight: 700; }
+.modal-body { padding: var(--sp-6); }
+.modal-footer {
+  padding: var(--sp-5) var(--sp-6);
+  border-top: 1px solid var(--border);
+  display: flex; justify-content: flex-end; gap: var(--sp-3);
+  position: sticky; bottom: 0; background: var(--surface);
+  border-radius: 0 0 var(--r-xl) var(--r-xl);
+}
+
+/* ═══════════════════════════════════════════════════
+   SECTION: COMPONENTS — Table
+   ═══════════════════════════════════════════════════ */
+.table-wrap { overflow-x: auto; border-radius: var(--r); border: 1px solid var(--border); }
+table { width: 100%; border-collapse: collapse; font-size: 13px; min-width: 700px; }
+thead { background: var(--surface-2); }
+th {
+  padding: 10px 14px; text-align: left;
+  font-size: 10px; font-weight: 700; text-transform: uppercase;
+  letter-spacing: .06em; color: var(--text-muted);
+  border-bottom: 1px solid var(--border);
+  white-space: nowrap;
+}
+td { padding: 12px 14px; border-bottom: 1px solid var(--border); vertical-align: middle; }
+tbody tr:last-child td { border-bottom: none; }
+tbody tr { transition: background var(--trans-fast); }
+tbody tr:hover td { background: var(--primary-ll); }
+.no-data { text-align: center; color: var(--text-muted); padding: 48px; font-size: 13px; }
+
+/* ═══════════════════════════════════════════════════
+   SECTION: COMPONENTS — Stats & KPIs
+   ═══════════════════════════════════════════════════ */
+.stats-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px,1fr)); gap: 14px; margin-bottom: var(--sp-6); }
+.stat-card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--r-lg);
+  padding: var(--sp-5) var(--sp-6);
+  box-shadow: var(--shadow-sm);
+  position: relative; overflow: hidden;
+  cursor: default;
+  transition: transform var(--trans), box-shadow var(--trans);
+}
+.stat-card:hover { transform: translateY(-2px); box-shadow: var(--shadow); }
+.stat-card::before {
+  content: ''; position: absolute; top: 0; left: 0; right: 0; height: 3px;
+  border-radius: var(--r-lg) var(--r-lg) 0 0;
+}
+.stat-card.blue::before   { background: linear-gradient(90deg, var(--primary), var(--primary-2)); }
+.stat-card.sky::before    { background: linear-gradient(90deg, var(--status-progress), #38bdf8); }
+.stat-card.green::before  { background: linear-gradient(90deg, var(--status-resolved), #34d399); }
+.stat-card.gray::before   { background: linear-gradient(90deg, var(--status-closed), #94a3b8); }
+.stat-card.red::before    { background: linear-gradient(90deg, var(--status-overdue), #f87171); }
+.stat-card.amber::before  { background: linear-gradient(90deg, var(--accent), #fbbf24); }
+.stat-val { font-family: var(--font-display); font-size: 30px; font-weight: 800; line-height: 1; margin-bottom: 4px; }
+.stat-card.blue .stat-val  { color: var(--primary); }
+.stat-card.sky .stat-val   { color: var(--status-progress); }
+.stat-card.green .stat-val { color: var(--status-resolved); }
+.stat-card.gray .stat-val  { color: var(--status-closed); }
+.stat-card.red .stat-val   { color: var(--status-overdue); }
+.stat-card.amber .stat-val { color: var(--accent); }
+.stat-label { font-size: 11px; color: var(--text-muted); font-weight: 500; }
+.stat-sub { font-size: 11px; margin-top: 4px; color: var(--text-hint); }
+.stat-icon { position: absolute; right: 16px; top: 16px; opacity: .08; font-size: 32px; }
+
+/* ═══════════════════════════════════════════════════
+   SECTION: COMPONENTS — Toast Notifications
+   ═══════════════════════════════════════════════════ */
+.toast-container { position: fixed; bottom: 24px; right: 24px; z-index: 9999; display: flex; flex-direction: column; gap: 8px; }
+.toast {
+  display: flex; align-items: center; gap: 10px;
+  padding: 12px 16px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--r);
+  box-shadow: var(--shadow-lg);
+  font-size: 13px; font-weight: 500;
+  max-width: 340px; min-width: 240px;
+  animation: slideInRight .2s ease;
+}
+@keyframes slideInRight { from { opacity:0; transform:translateX(20px); } to { opacity:1; transform:none; } }
+.toast-success { border-left: 3px solid var(--status-resolved); }
+.toast-error   { border-left: 3px solid var(--prio-critical); }
+.toast-info    { border-left: 3px solid var(--status-progress); }
+.toast-warning { border-left: 3px solid var(--accent); }
+.toast-icon { font-size: 16px; }
+
+/* ═══════════════════════════════════════════════════
+   SECTION: COMPONENTS — Notification Panel
+   ═══════════════════════════════════════════════════ */
+.notif-panel {
+  position: fixed; top: 60px; right: 0;
+  width: 340px; max-height: calc(100vh - 60px);
+  background: var(--surface);
+  border-left: 1px solid var(--border);
+  box-shadow: var(--shadow-lg);
+  z-index: 200;
+  display: flex; flex-direction: column;
+  transform: translateX(100%);
+  transition: transform .25s cubic-bezier(.4,0,.2,1);
+}
+.notif-panel.open { transform: none; }
+.notif-header { padding: var(--sp-5) var(--sp-6); border-bottom: 1px solid var(--border); display: flex; align-items: center; justify-content: space-between; }
+.notif-list { flex: 1; overflow-y: auto; }
+.notif-item { padding: var(--sp-4) var(--sp-6); border-bottom: 1px solid var(--border); cursor: pointer; transition: background var(--trans-fast); }
+.notif-item:hover { background: var(--bg); }
+.notif-item.unread { background: var(--primary-ll); }
+.notif-item-title { font-size: 13px; font-weight: 600; color: var(--text); margin-bottom: 2px; }
+.notif-item-desc { font-size: 12px; color: var(--text-muted); }
+.notif-item-time { font-size: 10px; color: var(--text-hint); margin-top: 4px; font-family: var(--font-mono); }
+
+/* ═══════════════════════════════════════════════════
+   SECTION: COMPONENTS — SLA Timer
+   ═══════════════════════════════════════════════════ */
+.sla-bar { height: 4px; border-radius: 2px; background: var(--border); overflow: hidden; margin-top: 4px; }
+.sla-fill { height: 100%; border-radius: 2px; transition: width .3s ease; }
+.sla-ok   { background: var(--status-resolved); }
+.sla-warn { background: var(--accent); }
+.sla-over { background: var(--status-overdue); animation: pulse 1.5s infinite; }
+.sla-label { font-size: 10px; font-family: var(--font-mono); color: var(--text-muted); margin-top: 2px; }
+
+/* ═══════════════════════════════════════════════════
+   SECTION: COMPONENTS — Progress bars
+   ═══════════════════════════════════════════════════ */
+.progress { height: 8px; background: var(--border); border-radius: 4px; overflow: hidden; }
+.progress-fill { height: 100%; border-radius: 4px; transition: width .5s cubic-bezier(.4,0,.2,1); }
+.mini-chart { display: flex; align-items: flex-end; gap: 3px; height: 32px; }
+.mini-bar { flex: 1; background: var(--primary-l); border-radius: 3px 3px 0 0; transition: background var(--trans); }
+.mini-bar:hover { background: var(--primary-2); }
+
+/* ═══════════════════════════════════════════════════
+   SECTION: DASHBOARD — Specific
+   ═══════════════════════════════════════════════════ */
+.dashboard-grid { display: grid; grid-template-columns: 1fr 1fr; gap: var(--sp-6); }
+.dashboard-grid .full { grid-column: 1/-1; }
+.chart-container { position: relative; height: 200px; }
+
+/* ═══════════════════════════════════════════════════
+   SECTION: TICKETS — List & Detail
+   ═══════════════════════════════════════════════════ */
+.ticket-id { font-family: var(--font-mono); font-size: 11px; color: var(--text-hint); font-weight: 500; }
+.ticket-title { font-weight: 600; color: var(--text); margin-bottom: 3px; }
+.ticket-meta { font-size: 11px; color: var(--text-muted); display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }
+.dot-sep { color: var(--border-2); }
+.action-row { display: flex; gap: 6px; align-items: center; }
+
+.detail-section { margin-bottom: var(--sp-6); }
+.detail-section-title { font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: .06em; color: var(--text-muted); margin-bottom: var(--sp-3); padding-bottom: var(--sp-2); border-bottom: 1px solid var(--border); }
+.detail-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+.detail-item label { font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: .06em; color: var(--text-hint); display: block; margin-bottom: 3px; }
+.detail-item span { font-size: 13px; color: var(--text); font-weight: 500; }
+
+.history-list { display: flex; flex-direction: column; gap: 0; }
+.history-item { display: flex; gap: var(--sp-4); padding: var(--sp-3) 0; border-bottom: 1px solid var(--border); }
+.history-item:last-child { border-bottom: none; }
+.history-dot { width: 8px; height: 8px; border-radius: 50%; background: var(--border-2); flex-shrink: 0; margin-top: 5px; }
+.history-dot.green { background: var(--status-resolved); }
+.history-dot.blue  { background: var(--status-progress); }
+.history-dot.orange{ background: var(--accent); }
+.history-body { flex: 1; }
+.history-action { font-size: 13px; color: var(--text); font-weight: 500; }
+.history-time { font-size: 10px; color: var(--text-hint); font-family: var(--font-mono); margin-top: 2px; }
+.history-note { font-size: 12px; color: var(--text-2); margin-top: 4px; background: var(--bg); padding: 8px 10px; border-radius: var(--r-sm); border-left: 2px solid var(--border-2); }
+
+/* ═══════════════════════════════════════════════════
+   SECTION: FILTER BAR
+   ═══════════════════════════════════════════════════ */
+.filter-bar {
+  display: flex; gap: var(--sp-3); flex-wrap: wrap;
+  align-items: center; margin-bottom: var(--sp-5);
+  background: var(--surface);
+  padding: var(--sp-4) var(--sp-5);
+  border-radius: var(--r-lg);
+  border: 1px solid var(--border);
+}
+.filter-bar .form-control { max-width: 180px; padding: 7px 10px; font-size: 12px; }
+.search-box { flex: 1; min-width: 200px; max-width: 320px !important; }
+
+/* ═══════════════════════════════════════════════════
+   SECTION: SETTINGS
+   ═══════════════════════════════════════════════════ */
+.settings-grid { display: grid; grid-template-columns: 1fr 1fr; gap: var(--sp-6); }
+.logo-upload-zone {
+  width: 80px; height: 80px;
+  border: 2px dashed var(--border-2);
+  border-radius: var(--r);
+  display: flex; flex-direction: column; align-items: center; justify-content: center;
+  cursor: pointer; overflow: hidden; transition: border-color var(--trans);
+  background: var(--bg); font-size: 10px; color: var(--text-muted); text-align: center;
+}
+.logo-upload-zone:hover { border-color: var(--primary-2); }
+.logo-upload-zone img { width: 80px; height: 80px; object-fit: cover; }
+.member-card {
+  display: flex; align-items: center; gap: var(--sp-4);
+  padding: var(--sp-4) var(--sp-5);
+  border: 1px solid var(--border);
+  border-radius: var(--r);
+  background: var(--surface-2);
+  margin-bottom: var(--sp-3);
+  transition: border-color var(--trans);
+}
+.member-card:hover { border-color: var(--primary-2); }
+.avatar {
+  width: 38px; height: 38px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, var(--primary), var(--primary-2));
+  display: flex; align-items: center; justify-content: center;
+  color: #fff; font-weight: 700; font-size: 14px; flex-shrink: 0;
+  font-family: var(--font-display);
+}
+.member-info { flex: 1; }
+.member-name { font-size: 13px; font-weight: 600; color: var(--text); }
+.member-role { font-size: 11px; color: var(--text-muted); }
+.member-email { font-size: 11px; color: var(--text-hint); font-family: var(--font-mono); }
+.role-badge { padding: 2px 8px; border-radius: 20px; font-size: 10px; font-weight: 600; }
+.role-admin { background: #ede9fe; color: #7c3aed; }
+.role-tech  { background: var(--primary-l); color: var(--primary); }
+.role-user  { background: var(--bg-2); color: var(--text-muted); }
+
+/* ═══════════════════════════════════════════════════
+   SECTION: WATERMARK
+   ═══════════════════════════════════════════════════ */
+.watermark {
+  position: fixed; inset: 0;
+  display: flex; align-items: center; justify-content: center;
+  pointer-events: none; z-index: 9990; overflow: hidden;
+}
+.watermark-text {
+  font-family: var(--font-display);
+  font-size: clamp(12px, 2vw, 18px);
+  color: rgba(15,76,129,.06);
+  white-space: nowrap;
+  transform: rotate(-35deg);
+  text-transform: uppercase;
+  letter-spacing: .15em;
+  user-select: none;
+  position: absolute;
+  width: 200%; text-align: center;
+}
+[data-theme="dark"] .watermark-text { color: rgba(255,255,255,.04); }
+
+/* ═══════════════════════════════════════════════════
+   SECTION: FOOTER
+   ═══════════════════════════════════════════════════ */
+.app-footer {
+  border-top: 1px solid var(--border);
+  padding: var(--sp-4) var(--sp-8);
+  display: flex; align-items: center; justify-content: space-between;
+  font-size: 10px; color: var(--text-hint);
+  background: var(--surface);
+  flex-wrap: wrap; gap: var(--sp-3);
+}
+.footer-copy { font-family: var(--font-mono); }
+
+/* ═══════════════════════════════════════════════════
+   SECTION: SEARCH HIGHLIGHT
+   ═══════════════════════════════════════════════════ */
+mark { background: #fef08a; color: var(--text); border-radius: 2px; padding: 0 2px; }
+[data-theme="dark"] mark { background: #854d0e; color: #fef3c7; }
+
+/* ═══════════════════════════════════════════════════
+   SECTION: AUDIT LOG TAB
+   ═══════════════════════════════════════════════════ */
+.audit-item { display: flex; gap: var(--sp-4); padding: var(--sp-3) 0; border-bottom: 1px solid var(--border); font-size: 12px; }
+.audit-item:last-child { border-bottom: none; }
+.audit-time { font-family: var(--font-mono); font-size: 10px; color: var(--text-hint); white-space: nowrap; min-width: 130px; }
+.audit-event { color: var(--text-2); flex: 1; }
+.audit-user { color: var(--primary-2); font-weight: 600; }
+.audit-obj  { color: var(--text-muted); font-style: italic; }
+
+/* ═══════════════════════════════════════════════════
+   SECTION: MISC utilities
+   ═══════════════════════════════════════════════════ */
+.flex { display: flex; }
+.flex-center { display: flex; align-items: center; }
+.flex-between { display: flex; align-items: center; justify-content: space-between; }
+.gap-2 { gap: var(--sp-2); }
+.gap-3 { gap: var(--sp-3); }
+.gap-4 { gap: var(--sp-4); }
+.mt-4 { margin-top: var(--sp-4); }
+.mt-6 { margin-top: var(--sp-6); }
+.mb-4 { margin-bottom: var(--sp-4); }
+.mb-6 { margin-bottom: var(--sp-6); }
+.text-muted { color: var(--text-muted); }
+.text-mono { font-family: var(--font-mono); font-size: 12px; }
+.divider { border: none; border-top: 1px solid var(--border); margin: var(--sp-5) 0; }
+hr.divider { border-color: var(--border); }
+.empty-state { text-align: center; padding: 60px 24px; color: var(--text-muted); }
+.empty-state-icon { font-size: 48px; margin-bottom: var(--sp-4); opacity: .4; }
+.empty-state-title { font-family: var(--font-display); font-size: 16px; font-weight: 700; color: var(--text); margin-bottom: 6px; }
+.chip { display: inline-flex; align-items: center; gap: 4px; padding: 4px 10px; border-radius: 20px; background: var(--bg-2); font-size: 11px; font-weight: 500; color: var(--text-2); }
+.chip-x { cursor: pointer; color: var(--text-muted); font-size: 14px; line-height: 1; }
+.chip-x:hover { color: var(--prio-critical); }
+.kbd { font-family: var(--font-mono); font-size: 10px; background: var(--bg-2); border: 1px solid var(--border); border-radius: 4px; padding: 1px 5px; color: var(--text-muted); }
+.switch { position: relative; display: inline-flex; width: 42px; height: 24px; }
+.switch input { opacity: 0; width: 0; height: 0; }
+.switch-slider { position: absolute; inset: 0; background: var(--border-2); border-radius: 24px; cursor: pointer; transition: background var(--trans); }
+.switch-slider::before { content: ''; position: absolute; width: 18px; height: 18px; background: #fff; border-radius: 50%; top: 3px; left: 3px; transition: transform var(--trans); box-shadow: 0 1px 3px rgba(0,0,0,.2); }
+.switch input:checked + .switch-slider { background: var(--primary-2); }
+.switch input:checked + .switch-slider::before { transform: translateX(18px); }
+
+/* Scrollbar */
+::-webkit-scrollbar { width: 6px; height: 6px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: var(--border-2); border-radius: 3px; }
+::-webkit-scrollbar-thumb:hover { background: var(--text-hint); }
+</style>
+</head>
+<body>
+
+<!-- WATERMARK -->
+<div class="watermark" id="watermark">
+  <div class="watermark-text" id="wm-text">© ISTIC — Ticket Manager v1.0 — Usage interne</div>
+</div>
+
+<!-- TOAST CONTAINER -->
+<div class="toast-container" id="toast-container"></div>
+
+<!-- NOTIFICATION PANEL -->
+<div class="notif-panel" id="notif-panel">
+  <div class="notif-header">
+    <span style="font-family:var(--font-display);font-weight:700;font-size:14px">Notifications</span>
+    <div class="flex gap-2">
+      <button class="btn btn-xs btn-ghost" onclick="markAllRead()">Tout lire</button>
+      <button class="btn btn-icon btn-ghost btn-xs" onclick="toggleNotifPanel()">✕</button>
+    </div>
+  </div>
+  <div class="notif-list" id="notif-list"></div>
+</div>
+
+<!-- ═══════════════════════════════════════════════════
+     SIDEBAR
+     ═══════════════════════════════════════════════════ -->
+<aside class="sidebar">
+  <div class="sidebar-brand">
+    <div class="brand-logo" onclick="document.getElementById('logo-input-sidebar').click()" title="Changer le logo">
+      <span id="sidebar-logo-letter">T</span>
+    </div>
+    <input type="file" id="logo-input-sidebar" accept="image/*" style="display:none" onchange="uploadLogoFromSidebar(this)">
+    <div class="brand-info">
+      <div class="brand-name" id="sidebar-inst-name">ISTIC — Ticket Manager</div>
+      <div class="brand-sub">Support IT & Technique</div>
+    </div>
+  </div>
+
+  <nav class="sidebar-nav" role="navigation" aria-label="Navigation principale">
+    <span class="nav-section-label">Principal</span>
+    <button class="nav-item active" onclick="navigate('dashboard',this)" aria-current="page">
+      <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/></svg>
+      Tableau de bord
+    </button>
+    <button class="nav-item" onclick="navigate('tickets',this)">
+      <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M15 5v2M15 11v2M15 17v2M5 5h14a2 2 0 012 2v3a2 2 0 000 4v3a2 2 0 01-2 2H5a2 2 0 01-2-2v-3a2 2 0 000-4V7a2 2 0 012-2z"/></svg>
+      Tickets
+      <span class="nav-badge" id="nav-open-count">0</span>
+    </button>
+    <button class="nav-item" onclick="navigate('planning',this)">
+      <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
+      Tâches récurrentes
+    </button>
+    <button class="nav-item" onclick="navigate('audit',this)">
+      <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2"/><rect x="9" y="3" width="6" height="4" rx="2"/><path d="M9 12h6M9 16h4"/></svg>
+      Journal d'audit
+    </button>
+
+    <span class="nav-section-label">Gestion</span>
+    <button class="nav-item" onclick="navigate('settings',this)">
+      <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 00.33 1.82l.06.06a2 2 0 010 2.83 2 2 0 01-2.83 0l-.06-.06a1.65 1.65 0 00-1.82-.33 1.65 1.65 0 00-1 1.51V21a2 2 0 01-2 2 2 2 0 01-2-2v-.09A1.65 1.65 0 009 19.4a1.65 1.65 0 00-1.82.33l-.06.06a2 2 0 01-2.83 0 2 2 0 010-2.83l.06-.06A1.65 1.65 0 004.68 15a1.65 1.65 0 00-1.51-1H3a2 2 0 01-2-2 2 2 0 012-2h.09A1.65 1.65 0 004.6 9a1.65 1.65 0 00-.33-1.82l-.06-.06a2 2 0 010-2.83 2 2 0 012.83 0l.06.06A1.65 1.65 0 009 4.68a1.65 1.65 0 001-1.51V3a2 2 0 012-2 2 2 0 012 2v.09a1.65 1.65 0 001 1.51 1.65 1.65 0 001.82-.33l.06-.06a2 2 0 012.83 0 2 2 0 010 2.83l-.06.06A1.65 1.65 0 0019.4 9a1.65 1.65 0 001.51 1H21a2 2 0 012 2 2 2 0 01-2 2h-.09a1.65 1.65 0 00-1.51 1z"/></svg>
+      Paramètres
+    </button>
+  </nav>
+
+  <div class="sidebar-footer">
+    <div class="sidebar-footer-row">
+      <span style="font-size:16px">🌙</span>
+      <span style="flex:1;font-size:12px;color:rgba(255,255,255,.5)">Mode sombre</span>
+      <label class="switch" title="Basculer le thème">
+        <input type="checkbox" id="theme-toggle" onchange="toggleTheme()">
+        <span class="switch-slider"></span>
+      </label>
+    </div>
+    <div class="sidebar-footer-row">
+      <span class="version-tag">v1.0.0 · ISO 21001</span>
+    </div>
+  </div>
+</aside>
+
+<!-- ═══════════════════════════════════════════════════
+     MAIN CONTENT
+     ═══════════════════════════════════════════════════ -->
+<main class="main" role="main">
+  <header class="topbar">
+    <h1 class="topbar-title" id="topbar-title">Tableau de bord</h1>
+    <div class="topbar-actions">
+      <span style="font-size:11px;color:var(--text-hint)" id="online-indicator">🟢 En ligne</span>
+      <button class="btn btn-ghost btn-icon" onclick="toggleNotifPanel()" title="Notifications" aria-label="Notifications">
+        <span id="notif-dot" style="position:relative">🔔<span id="notif-count-badge" style="position:absolute;top:-4px;right:-4px;background:var(--accent);color:#fff;border-radius:50%;font-size:8px;width:14px;height:14px;display:none;align-items:center;justify-content:center;font-weight:700"></span></span>
+      </button>
+      <button class="btn btn-primary" onclick="openNewTicketModal()" title="Nouveau ticket [N]" aria-label="Nouveau ticket">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+        Nouveau ticket
+      </button>
+    </div>
+  </header>
+
+  <div class="content">
+
+    <!-- ═══ VIEW: DASHBOARD ═══ -->
+    <section class="view active" id="view-dashboard" aria-label="Tableau de bord">
+      <div class="stats-grid" id="dash-stats"></div>
+      <div class="dashboard-grid">
+        <div class="card">
+          <div class="card-header">
+            <div><div class="card-title">Tickets par statut</div><div class="card-subtitle">Répartition temps réel</div></div>
+          </div>
+          <div class="chart-container"><canvas id="chart-status"></canvas></div>
+        </div>
+        <div class="card">
+          <div class="card-header">
+            <div><div class="card-title">Tickets par priorité</div><div class="card-subtitle">Distribution</div></div>
+          </div>
+          <div class="chart-container"><canvas id="chart-priority"></canvas></div>
+        </div>
+        <div class="card">
+          <div class="card-header">
+            <div><div class="card-title">Tendances mensuelles</div><div class="card-subtitle">Créations vs Résolutions (12 derniers mois)</div></div>
+          </div>
+          <div class="chart-container" style="height:180px"><canvas id="chart-trend"></canvas></div>
+        </div>
+        <div class="card">
+          <div class="card-header">
+            <div><div class="card-title">Charge par technicien</div><div class="card-subtitle">Tickets ouverts assignés</div></div>
+          </div>
+          <div id="tech-workload"></div>
+        </div>
+        <div class="card full">
+          <div class="card-header">
+            <div><div class="card-title">Tickets en retard SLA</div><div class="card-subtitle">Nécessitent une action immédiate</div></div>
+            <span id="overdue-count-badge" class="badge badge-overdue">0 en retard</span>
+          </div>
+          <div id="overdue-list"></div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ═══ VIEW: TICKETS ═══ -->
+    <section class="view" id="view-tickets" aria-label="Gestion des tickets">
+      <div class="filter-bar" role="search" aria-label="Filtres">
+        <input type="search" class="form-control search-box" id="search-input" placeholder="🔍 Rechercher un ticket, titre, ID…" oninput="renderTickets()" aria-label="Rechercher">
+        <select class="form-control" id="filter-status" onchange="renderTickets()" aria-label="Filtrer par statut">
+          <option value="">Tous les statuts</option>
+          <option value="new">Nouveau</option>
+          <option value="in_progress">En cours</option>
+          <option value="resolved">Résolu</option>
+          <option value="closed">Clôturé</option>
+        </select>
+        <select class="form-control" id="filter-priority" onchange="renderTickets()" aria-label="Filtrer par priorité">
+          <option value="">Toutes priorités</option>
+          <option value="critical">Critique</option>
+          <option value="high">Haute</option>
+          <option value="medium">Moyenne</option>
+          <option value="low">Faible</option>
+        </select>
+        <select class="form-control" id="filter-tech" onchange="renderTickets()" aria-label="Filtrer par technicien">
+          <option value="">Tous les techniciens</option>
+        </select>
+        <select class="form-control" id="filter-cat" onchange="renderTickets()" aria-label="Filtrer par catégorie">
+          <option value="">Toutes catégories</option>
+          <option value="hardware">Matériel</option>
+          <option value="software">Logiciel</option>
+          <option value="network">Réseau</option>
+          <option value="security">Sécurité</option>
+          <option value="account">Compte/Accès</option>
+          <option value="maintenance">Maintenance</option>
+          <option value="other">Autre</option>
+        </select>
+        <button class="btn btn-ghost btn-sm" onclick="clearFilters()">Effacer filtres</button>
+        <button class="btn btn-sm" onclick="exportTicketsExcel()" title="Exporter en CSV">
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+          Exporter
+        </button>
+      </div>
+      <div class="card" style="padding:0">
+        <div class="table-wrap">
+          <table role="grid" aria-label="Liste des tickets">
+            <thead>
+              <tr>
+                <th>ID</th>
+                <th>Titre</th>
+                <th>Catégorie</th>
+                <th>Priorité</th>
+                <th>Statut</th>
+                <th>Assigné à</th>
+                <th>SLA</th>
+                <th>Créé le</th>
+                <th>Actions</th>
+              </tr>
+            </thead>
+            <tbody id="tickets-tbody"></tbody>
+          </table>
+        </div>
+      </div>
+    </section>
+
+    <!-- ═══ VIEW: PLANNING (Tâches récurrentes) ═══ -->
+    <section class="view" id="view-planning" aria-label="Tâches récurrentes">
+      <div class="flex-between mb-6">
+        <div></div>
+        <button class="btn btn-primary" onclick="openTaskModal()">+ Nouvelle tâche récurrente</button>
+      </div>
+      <div class="dashboard-grid">
+        <div class="card full">
+          <div class="card-header">
+            <div><div class="card-title">Tâches planifiées</div><div class="card-subtitle">Surveillance des tâches régulières (backup, maintenance…)</div></div>
+          </div>
+          <div class="table-wrap">
+            <table>
+              <thead><tr><th>Tâche</th><th>Fréquence</th><th>Responsable</th><th>Dernière exécution</th><th>Prochaine échéance</th><th>Statut</th><th>Actions</th></tr></thead>
+              <tbody id="tasks-tbody"></tbody>
+            </table>
+          </div>
+        </div>
+        <div class="card full">
+          <div class="card-header"><div class="card-title">Historique des exécutions</div></div>
+          <div id="task-exec-history" style="max-height:300px;overflow-y:auto">
+            <div class="empty-state"><div class="empty-state-icon">📋</div><div class="empty-state-title">Aucune exécution enregistrée</div></div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ═══ VIEW: AUDIT LOG ═══ -->
+    <section class="view" id="view-audit" aria-label="Journal d'audit">
+      <div class="card">
+        <div class="card-header">
+          <div>
+            <div class="card-title">Journal d'audit interne</div>
+            <div class="card-subtitle">Toutes les actions système — ISO 27002 conformité</div>
+          </div>
+          <button class="btn btn-sm btn-ghost" onclick="clearAuditLog()">Effacer le journal</button>
+        </div>
+        <div id="audit-log-list" style="max-height:600px;overflow-y:auto"></div>
+      </div>
+    </section>
+
+    <!-- ═══ VIEW: SETTINGS ═══ -->
+    <section class="view" id="view-settings" aria-label="Paramètres">
+      <div class="settings-grid">
+
+        <div class="card">
+          <div class="card-header"><div class="card-title">🏛️ Identité de l'établissement</div></div>
+          <div style="display:flex;gap:var(--sp-5);align-items:flex-start;margin-bottom:var(--sp-5)">
+            <div>
+              <label style="display:block;margin-bottom:8px">Logo</label>
+              <div class="logo-upload-zone" onclick="document.getElementById('logo-input').click()" id="logo-zone" title="Cliquer pour charger un logo">
+                <span id="logo-zone-content">📁<br>Logo</span>
+              </div>
+              <input type="file" id="logo-input" accept="image/*" style="display:none" onchange="uploadLogo(this)">
+              <button class="btn btn-xs btn-ghost" style="margin-top:6px" onclick="removeLogo()">Supprimer</button>
+            </div>
+            <div style="flex:1">
+              <div class="form-group" style="margin-bottom:12px">
+                <label for="s-inst">Nom de l'établissement</label>
+                <input type="text" id="s-inst" class="form-control" placeholder="Ex : ISTIC, Université de Carthage" oninput="updateInstitution()">
+              </div>
+              <div class="form-group">
+                <label for="s-current-user">Utilisateur courant (simulé)</label>
+                <input type="text" id="s-current-user" class="form-control" placeholder="Ex : Admin ISTIC">
+              </div>
+            </div>
+          </div>
+          <div class="form-group mb-4">
+            <label for="s-revue-freq">SLA par défaut — Critique (heures)</label>
+            <input type="number" id="s-sla-critical" class="form-control" value="4" min="1">
+          </div>
+          <button class="btn btn-primary" onclick="saveSettings()">💾 Enregistrer les paramètres</button>
+        </div>
+
+        <div class="card">
+          <div class="card-header"><div class="card-title">🎨 Affichage & Thème</div></div>
+          <div style="display:flex;flex-direction:column;gap:16px">
+            <div class="flex-between">
+              <div><div style="font-size:13px;font-weight:600">Mode sombre</div><div style="font-size:11px;color:var(--text-muted)">Basculer le thème de l'interface</div></div>
+              <label class="switch"><input type="checkbox" id="dark-toggle-2" onchange="toggleTheme2()"><span class="switch-slider"></span></label>
+            </div>
+            <div class="flex-between">
+              <div><div style="font-size:13px;font-weight:600">Filigrane (Watermark)</div><div style="font-size:11px;color:var(--text-muted)">Afficher l'indication de propriété</div></div>
+              <label class="switch"><input type="checkbox" id="wm-toggle" checked onchange="toggleWatermark()"><span class="switch-slider"></span></label>
+            </div>
+            <div class="flex-between">
+              <div><div style="font-size:13px;font-weight:600">Notifications toast</div><div style="font-size:11px;color:var(--text-muted)">Afficher les alertes courtes</div></div>
+              <label class="switch"><input type="checkbox" id="toast-toggle" checked><span class="switch-slider"></span></label>
+            </div>
+          </div>
+        </div>
+
+        <div class="card" style="grid-column:1/-1">
+          <div class="card-header">
+            <div><div class="card-title">👥 Équipe IT & Techniciens</div><div class="card-subtitle">Gestion des membres assignables aux tickets</div></div>
+            <button class="btn btn-primary btn-sm" onclick="openMemberModal()">+ Ajouter un membre</button>
+          </div>
+          <div id="members-list"></div>
+        </div>
+
+        <div class="card" style="grid-column:1/-1">
+          <div class="card-header"><div class="card-title">💾 Sauvegarde & Restauration</div></div>
+          <div class="flex gap-3" style="flex-wrap:wrap">
+            <button class="btn btn-primary" onclick="exportJSON()">⬇ Exporter toutes les données (JSON)</button>
+            <button class="btn" onclick="document.getElementById('import-json').click()">⬆ Importer depuis JSON</button>
+            <input type="file" id="import-json" accept=".json" style="display:none" onchange="importJSON(this)">
+            <button class="btn btn-sm" onclick="exportTicketsExcel()">📊 Exporter tickets CSV</button>
+            <button class="btn btn-danger btn-sm" onclick="resetAllData()">🗑 Réinitialiser tout</button>
+          </div>
+          <div style="margin-top:12px;font-size:11px;color:var(--text-hint)">
+            ⚠️ La réinitialisation efface toutes les données de localStorage. Exportez d'abord une sauvegarde JSON.
+          </div>
+        </div>
+
+        <div class="card" style="grid-column:1/-1">
+          <div class="card-header"><div class="card-title">📧 Intégration Email</div></div>
+          <div style="font-size:12px;color:var(--text-muted);line-height:1.7">
+            <strong>Mode actuel : mailto: simulé</strong> — Les boutons "Envoyer email" génèrent un lien mailto: avec sujet et corps pré-remplis.<br>
+            <strong>Pour intégrer EmailJS :</strong> Remplacer la fonction <code>handleMailto()</code> par l'appel EmailJS (voir commentaires dans le code JS).<br>
+            <strong>Formspree / SMTP :</strong> Remplacer par un POST fetch() vers votre endpoint. Voir <code>// SECTION: EMAIL-INTEGRATION</code>.
+          </div>
+        </div>
+
+      </div>
+    </section>
+
+  </div><!-- /content -->
+
+  <footer class="app-footer" role="contentinfo">
+    <span class="footer-copy" id="footer-copy">© 2025 ISTIC, Université de Carthage — Ticket Manager v1.0</span>
+    <span>ISO 21001:2018 · ISO 27002:2022 · Usage strictement interne · Reproduction interdite</span>
+    <span style="font-family:var(--font-mono);font-size:10px;color:var(--text-hint)">Build: 2025 · <span id="footer-user">Utilisateur: Admin</span></span>
+  </footer>
+</main>
+
+<!-- ═══════════════════════════════════════════════════
+     MODALS
+     ═══════════════════════════════════════════════════ -->
+
+<!-- NEW TICKET MODAL -->
+<div class="modal-backdrop" id="modal-ticket" role="dialog" aria-modal="true" aria-labelledby="modal-ticket-title" onclick="if(event.target===this)closeModal('modal-ticket')">
+  <div class="modal modal-lg">
+    <div class="modal-header">
+      <div>
+        <div class="modal-title" id="modal-ticket-title">Nouveau ticket d'intervention</div>
+        <div style="font-size:12px;color:var(--text-muted);margin-top:2px">Tous les champs marqués * sont obligatoires</div>
+      </div>
+      <button class="btn btn-icon btn-ghost" onclick="closeModal('modal-ticket')" aria-label="Fermer">✕</button>
+    </div>
+    <div class="modal-body">
+      <div class="form-grid" style="grid-template-columns:1fr 1fr">
+        <div class="form-group">
+          <label for="t-title">Titre / Objet *</label>
+          <input type="text" id="t-title" class="form-control" placeholder="Ex : Imprimante bureau 204 hors service" maxlength="120" oninput="updateCharCount('t-title','cc-title',120)">
+          <div class="char-count" id="cc-title">0/120</div>
+        </div>
+        <div class="form-group">
+          <label for="t-type">Type de demande *</label>
+          <select id="t-type" class="form-control">
+            <option value="">Sélectionner…</option>
+            <option value="incident">Incident</option>
+            <option value="request">Demande de service</option>
+            <option value="problem">Problème</option>
+            <option value="change">Demande de changement</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label for="t-cat">Catégorie *</label>
+          <select id="t-cat" class="form-control">
+            <option value="">Sélectionner…</option>
+            <option value="hardware">🖥 Matériel informatique</option>
+            <option value="software">💿 Logiciel / Application</option>
+            <option value="network">🌐 Réseau / Connectivité</option>
+            <option value="security">🔒 Sécurité informatique</option>
+            <option value="account">👤 Compte / Accès</option>
+            <option value="maintenance">🔧 Maintenance préventive</option>
+            <option value="other">📦 Autre</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label for="t-priority">Priorité *</label>
+          <select id="t-priority" class="form-control">
+            <option value="">Sélectionner…</option>
+            <option value="critical">🔴 Critique — SLA 4h</option>
+            <option value="high">🟠 Haute — SLA 24h</option>
+            <option value="medium">🟡 Moyenne — SLA 48h</option>
+            <option value="low">🟢 Faible — SLA 72h</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label for="t-service">Service / Département impacté</label>
+          <input type="text" id="t-service" class="form-control" placeholder="Ex : Département Informatique">
+        </div>
+        <div class="form-group">
+          <label for="t-assigned">Assigner à</label>
+          <select id="t-assigned" class="form-control">
+            <option value="">Non assigné</option>
+          </select>
+        </div>
+        <div class="form-group full">
+          <label for="t-desc">Description détaillée *</label>
+          <textarea id="t-desc" class="form-control" placeholder="Décrivez le problème, les étapes pour le reproduire, l'impact…" maxlength="1000" oninput="updateCharCount('t-desc','cc-desc',1000)" style="min-height:100px"></textarea>
+          <div class="char-count" id="cc-desc">0/1000</div>
+        </div>
+        <div class="form-group">
+          <label for="t-reporter">Demandeur *</label>
+          <input type="text" id="t-reporter" class="form-control" placeholder="Nom du demandeur">
+        </div>
+        <div class="form-group">
+          <label for="t-reporter-email">Email du demandeur</label>
+          <input type="email" id="t-reporter-email" class="form-control" placeholder="demandeur@istic.tn">
+        </div>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn" onclick="closeModal('modal-ticket')">Annuler</button>
+      <button class="btn btn-accent" onclick="submitTicketAndEmail()">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><polyline points="22,6 12,12 2,6"/></svg>
+        Créer + notifier
+      </button>
+      <button class="btn btn-primary" onclick="saveTicket()">Enregistrer le ticket</button>
+    </div>
+  </div>
+</div>
+
+<!-- TICKET DETAIL MODAL -->
+<div class="modal-backdrop" id="modal-detail" role="dialog" aria-modal="true" aria-labelledby="modal-detail-title" onclick="if(event.target===this)closeModal('modal-detail')">
+  <div class="modal modal-lg">
+    <div class="modal-header">
+      <div>
+        <div class="modal-title" id="modal-detail-title">Détail du ticket</div>
+        <div id="detail-id-line" style="font-family:var(--font-mono);font-size:11px;color:var(--text-muted);margin-top:2px"></div>
+      </div>
+      <button class="btn btn-icon btn-ghost" onclick="closeModal('modal-detail')" aria-label="Fermer">✕</button>
+    </div>
+    <div class="modal-body" id="modal-detail-body"></div>
+    <div class="modal-footer" id="modal-detail-footer"></div>
+  </div>
+</div>
+
+<!-- MEMBER MODAL -->
+<div class="modal-backdrop" id="modal-member" role="dialog" aria-modal="true" onclick="if(event.target===this)closeModal('modal-member')">
+  <div class="modal">
+    <div class="modal-header">
+      <div class="modal-title">Ajouter un membre IT</div>
+      <button class="btn btn-icon btn-ghost" onclick="closeModal('modal-member')" aria-label="Fermer">✕</button>
+    </div>
+    <div class="modal-body">
+      <div class="form-grid">
+        <div class="form-group">
+          <label for="m-name">Nom complet *</label>
+          <input type="text" id="m-name" class="form-control" placeholder="Prénom Nom">
+        </div>
+        <div class="form-group">
+          <label for="m-email">Email *</label>
+          <input type="email" id="m-email" class="form-control" placeholder="prenom.nom@istic.tn">
+        </div>
+        <div class="form-group">
+          <label for="m-role">Rôle</label>
+          <select id="m-role" class="form-control">
+            <option value="tech">Technicien IT</option>
+            <option value="admin">Administrateur</option>
+            <option value="user">Utilisateur</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label for="m-dept">Département</label>
+          <input type="text" id="m-dept" class="form-control" placeholder="Ex : Infrastructure réseau">
+        </div>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn" onclick="closeModal('modal-member')">Annuler</button>
+      <button class="btn btn-primary" onclick="saveMember()">Enregistrer</button>
+    </div>
+  </div>
+</div>
+
+<!-- TASK MODAL -->
+<div class="modal-backdrop" id="modal-task" role="dialog" aria-modal="true" onclick="if(event.target===this)closeModal('modal-task')">
+  <div class="modal">
+    <div class="modal-header">
+      <div class="modal-title">Tâche récurrente</div>
+      <button class="btn btn-icon btn-ghost" onclick="closeModal('modal-task')" aria-label="Fermer">✕</button>
+    </div>
+    <div class="modal-body">
+      <div class="form-grid">
+        <div class="form-group full">
+          <label for="task-name">Nom de la tâche *</label>
+          <input type="text" id="task-name" class="form-control" placeholder="Ex : Backup serveur principal">
+        </div>
+        <div class="form-group full">
+          <label for="task-desc">Description</label>
+          <textarea id="task-desc" class="form-control" placeholder="Procédure, commandes, notes…"></textarea>
+        </div>
+        <div class="form-group">
+          <label for="task-freq">Fréquence</label>
+          <select id="task-freq" class="form-control">
+            <option value="daily">Quotidienne</option>
+            <option value="weekly">Hebdomadaire</option>
+            <option value="monthly">Mensuelle</option>
+            <option value="quarterly">Trimestrielle</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label for="task-resp">Responsable</label>
+          <select id="task-resp" class="form-control">
+            <option value="">Non assigné</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label for="task-last">Dernière exécution</label>
+          <input type="date" id="task-last" class="form-control">
+        </div>
+        <div class="form-group">
+          <label for="task-next">Prochaine échéance</label>
+          <input type="date" id="task-next" class="form-control">
+        </div>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn" onclick="closeModal('modal-task')">Annuler</button>
+      <button class="btn btn-primary" onclick="saveTask()">Enregistrer</button>
+    </div>
+  </div>
+</div>
+
+<!-- ADD NOTE MODAL -->
+<div class="modal-backdrop" id="modal-note" role="dialog" aria-modal="true" onclick="if(event.target===this)closeModal('modal-note')">
+  <div class="modal">
+    <div class="modal-header">
+      <div class="modal-title" id="modal-note-title">Ajouter une note</div>
+      <button class="btn btn-icon btn-ghost" onclick="closeModal('modal-note')" aria-label="Fermer">✕</button>
+    </div>
+    <div class="modal-body">
+      <div class="form-group" style="margin-bottom:14px">
+        <label for="note-text">Note / Commentaire</label>
+        <textarea id="note-text" class="form-control" placeholder="Décrivez l'action effectuée, les observations, la résolution…" style="min-height:120px"></textarea>
+      </div>
+      <div class="form-group">
+        <label for="note-status">Changer le statut</label>
+        <select id="note-status" class="form-control">
+          <option value="">Pas de changement</option>
+          <option value="new">Nouveau</option>
+          <option value="in_progress">En cours</option>
+          <option value="resolved">Résolu</option>
+          <option value="closed">Clôturé</option>
+        </select>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn" onclick="closeModal('modal-note')">Annuler</button>
+      <button class="btn btn-primary" onclick="saveNote()">Enregistrer la note</button>
+    </div>
+  </div>
+</div>
+
+<script>
+/* ═══════════════════════════════════════════════════
+   SECTION: STATE — Application State & Storage
+   ═══════════════════════════════════════════════════ */
+'use strict';
+
+const DB_KEY = 'ticketmgr-v1-istic';
+const VERSION = '1.0.0';
+
+// État central de l'application
+let S = {
+  settings: {
+    institution: 'ISTIC, Université de Carthage',
+    currentUser: 'Admin ISTIC',
+    logoData: '',
+    darkMode: false,
+    watermark: true,
+    toastEnabled: true,
+    slaHours: { critical: 4, high: 24, medium: 48, low: 72 }
+  },
+  tickets: [],
+  members: [],
+  tasks: [],
+  taskExecs: [],
+  notifications: [],
+  auditLog: []
+};
+
+let currentTicketId = null; // ticket ouvert dans le modal détail
+let currentNoteTicketId = null;
+let slaInterval = null;
+
+/* ═══════════════════════════════════════════════════
+   SECTION: PERSISTENCE — localStorage
+   ═══════════════════════════════════════════════════ */
+function persist() {
+  try {
+    localStorage.setItem(DB_KEY, JSON.stringify(S));
+  } catch(e) {
+    // Erreur de stockage — ne pas exposer les détails
+    showToast('Erreur de sauvegarde. Vérifiez l\'espace disponible.', 'error');
+  }
+}
+
+function loadData() {
+  try {
+    const raw = localStorage.getItem(DB_KEY);
+    if (raw) {
+      const parsed = JSON.parse(raw);
+      Object.assign(S, parsed);
+    }
+  } catch(e) {
+    console.warn('Données corrompues, réinitialisation.');
+  }
+}
+
+/* ═══════════════════════════════════════════════════
+   SECTION: SECURITY — Input Sanitization (ISO 27002)
+   Toutes les entrées utilisateur passent par sanitize()
+   ═══════════════════════════════════════════════════ */
+function sanitize(str) {
+  if (typeof str !== 'string') return '';
+  return str
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#039;')
+    .trim();
+}
+
+function sanitizeEmail(email) {
+  const pattern = /^[a-zA-Z0-9._%+\-]+@[a-zA-Z0-9.\-]+\.[a-zA-Z]{2,}$/;
+  return pattern.test(email) ? email.trim() : '';
+}
+
+function sanitizeText(text, maxLen = 1000) {
+  return sanitize(String(text || '')).substring(0, maxLen);
+}
+
+/* ═══════════════════════════════════════════════════
+   SECTION: AUDIT LOG — ISO 27002
+   ═══════════════════════════════════════════════════ */
+function auditLog(action, objectDesc, details) {
+  const entry = {
+    id: uid(),
+    timestamp: new Date().toISOString(),
+    user: S.settings.currentUser || 'Système',
+    action: sanitizeText(action, 200),
+    object: sanitizeText(objectDesc, 200),
+    details: sanitizeText(details || '', 500)
+  };
+  S.auditLog.unshift(entry);
+  if (S.auditLog.length > 500) S.auditLog = S.auditLog.slice(0, 500); // limite
+  persist();
+  renderAuditLog();
+}
+
+function renderAuditLog() {
+  const el = document.getElementById('audit-log-list');
+  if (!el) return;
+  if (!S.auditLog.length) {
+    el.innerHTML = '<div class="empty-state"><div class="empty-state-icon">📋</div><div class="empty-state-title">Journal vide</div></div>';
+    return;
+  }
+  const actionColor = { 'CREATE': 'green', 'UPDATE': 'blue', 'DELETE': '#dc2626', 'LOGIN': '#7c3aed', 'EXPORT': var_get('--accent') };
+  el.innerHTML = S.auditLog.map(e => {
+    const dt = new Date(e.timestamp);
+    const dtStr = dt.toLocaleString('fr-FR', { day:'2-digit', month:'short', hour:'2-digit', minute:'2-digit' });
+    return `<div class="audit-item">
+      <span class="audit-time">${dtStr}</span>
+      <span class="audit-event">
+        <span class="audit-user">${sanitize(e.user)}</span>
+        — ${sanitize(e.action)}
+        ${e.object ? `<span class="audit-obj"> (${sanitize(e.object)})</span>` : ''}
+        ${e.details ? `<br><span style="font-size:11px;color:var(--text-hint)">${sanitize(e.details)}</span>` : ''}
+      </span>
+    </div>`;
+  }).join('');
+}
+
+function clearAuditLog() {
+  if (!confirm('Effacer le journal d\'audit ? Cette action est irréversible.')) return;
+  S.auditLog = [];
+  persist();
+  renderAuditLog();
+  showToast('Journal d\'audit effacé.', 'info');
+}
+
+/* ═══════════════════════════════════════════════════
+   SECTION: UTILITIES
+   ═══════════════════════════════════════════════════ */
+function uid() {
+  return 'TKT-' + Date.now().toString(36).toUpperCase() + '-' + Math.random().toString(36).slice(2,5).toUpperCase();
+}
+
+function ticketUid() {
+  return 'TKT-' + String(Date.now()).slice(-6) + '-' + Math.random().toString(36).slice(2,4).toUpperCase();
+}
+
+function var_get(name) {
+  return getComputedStyle(document.documentElement).getPropertyValue(name).trim();
+}
+
+function fmtDate(iso) {
+  if (!iso) return '—';
+  try {
+    return new Date(iso).toLocaleString('fr-FR', { day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' });
+  } catch { return iso; }
+}
+
+function fmtDateShort(iso) {
+  if (!iso) return '—';
+  try {
+    return new Date(iso).toLocaleDateString('fr-FR', { day: '2-digit', month: 'short', year: 'numeric' });
+  } catch { return iso; }
+}
+
+function timeAgo(iso) {
+  if (!iso) return '';
+  const diff = Date.now() - new Date(iso).getTime();
+  const mins = Math.floor(diff / 60000);
+  if (mins < 60) return `il y a ${mins} min`;
+  const hrs = Math.floor(mins / 60);
+  if (hrs < 24) return `il y a ${hrs}h`;
+  const days = Math.floor(hrs / 24);
+  return `il y a ${days}j`;
+}
+
+function getSlaHours(priority) {
+  return S.settings.slaHours?.[priority] || { critical: 4, high: 24, medium: 48, low: 72 }[priority] || 48;
+}
+
+function getSlaInfo(ticket) {
+  if (!ticket.createdAt || ticket.status === 'closed' || ticket.status === 'resolved') {
+    return null;
+  }
+  const slaMs = getSlaHours(ticket.priority) * 3600000;
+  const elapsed = Date.now() - new Date(ticket.createdAt).getTime();
+  const pct = Math.min(Math.round(elapsed / slaMs * 100), 100);
+  const remaining = slaMs - elapsed;
+  const remainingH = Math.max(0, Math.round(remaining / 3600000));
+  const isOver = elapsed > slaMs;
+  return { pct, remaining, remainingH, isOver };
+}
+
+function priorityLabel(p) {
+  return { critical: 'Critique', high: 'Haute', medium: 'Moyenne', low: 'Faible' }[p] || p;
+}
+function statusLabel(s) {
+  return { new: 'Nouveau', in_progress: 'En cours', resolved: 'Résolu', closed: 'Clôturé' }[s] || s;
+}
+function catLabel(c) {
+  return { hardware: 'Matériel', software: 'Logiciel', network: 'Réseau', security: 'Sécurité', account: 'Compte/Accès', maintenance: 'Maintenance', other: 'Autre' }[c] || c;
+}
+function typeLabel(t) {
+  return { incident: 'Incident', request: 'Demande', problem: 'Problème', change: 'Changement' }[t] || t;
+}
+function statusBadgeClass(s) {
+  return { new: 'badge-new', in_progress: 'badge-progress', resolved: 'badge-resolved', closed: 'badge-closed' }[s] || 'badge-new';
+}
+
+function updateCharCount(inputId, countId, max) {
+  const val = document.getElementById(inputId)?.value || '';
+  const el = document.getElementById(countId);
+  if (el) el.textContent = `${val.length}/${max}`;
+}
+
+/* ═══════════════════════════════════════════════════
+   SECTION: TOAST NOTIFICATIONS
+   ═══════════════════════════════════════════════════ */
+function showToast(msg, type = 'info') {
+  if (!S.settings.toastEnabled) return;
+  const icons = { success: '✅', error: '❌', info: 'ℹ️', warning: '⚠️' };
+  const c = document.getElementById('toast-container');
+  const d = document.createElement('div');
+  d.className = `toast toast-${type}`;
+  d.innerHTML = `<span class="toast-icon">${icons[type] || 'ℹ️'}</span><span>${sanitize(msg)}</span>`;
+  c.appendChild(d);
+  setTimeout(() => { d.style.opacity = '0'; d.style.transform = 'translateX(20px)'; d.style.transition = '.3s'; setTimeout(() => d.remove(), 300); }, 3500);
+}
+
+/* ═══════════════════════════════════════════════════
+   SECTION: NOTIFICATIONS
+   ═══════════════════════════════════════════════════ */
+function addNotification(title, desc, ticketId) {
+  const n = { id: uid(), title: sanitizeText(title, 100), desc: sanitizeText(desc, 200), ticketId, createdAt: new Date().toISOString(), read: false };
+  S.notifications.unshift(n);
+  if (S.notifications.length > 100) S.notifications = S.notifications.slice(0, 100);
+  persist();
+  renderNotifications();
+  updateNotifBadge();
+}
+
+function renderNotifications() {
+  const el = document.getElementById('notif-list');
+  if (!el) return;
+  if (!S.notifications.length) {
+    el.innerHTML = '<div class="empty-state" style="padding:40px"><div class="empty-state-icon">🔔</div><div class="empty-state-title">Aucune notification</div></div>';
+    return;
+  }
+  el.innerHTML = S.notifications.slice(0, 30).map(n => `
+    <div class="notif-item ${n.read ? '' : 'unread'}" onclick="markRead('${n.id}')">
+      <div class="notif-item-title">${sanitize(n.title)}</div>
+      <div class="notif-item-desc">${sanitize(n.desc)}</div>
+      <div class="notif-item-time">${timeAgo(n.createdAt)}</div>
+    </div>`).join('');
+}
+
+function updateNotifBadge() {
+  const unread = S.notifications.filter(n => !n.read).length;
+  const badge = document.getElementById('notif-count-badge');
+  if (badge) {
+    badge.textContent = unread;
+    badge.style.display = unread > 0 ? 'flex' : 'none';
+  }
+  // Mise à jour nav badge tickets ouverts
+  const openCount = S.tickets.filter(t => t.status === 'new' || t.status === 'in_progress').length;
+  const navBadge = document.getElementById('nav-open-count');
+  if (navBadge) navBadge.textContent = openCount;
+}
+
+function markRead(id) {
+  const n = S.notifications.find(x => x.id === id);
+  if (n) { n.read = true; persist(); renderNotifications(); updateNotifBadge(); }
+}
+
+function markAllRead() {
+  S.notifications.forEach(n => n.read = true);
+  persist(); renderNotifications(); updateNotifBadge();
+}
+
+function toggleNotifPanel() {
+  document.getElementById('notif-panel').classList.toggle('open');
+}
+
+/* ═══════════════════════════════════════════════════
+   SECTION: EMAIL-INTEGRATION
+   Mode: mailto: simulé
+   Pour intégrer EmailJS: remplacer handleMailto par emailjs.send(...)
+   Pour Formspree: remplacer par fetch('https://formspree.io/f/YOUR_ID', { method:'POST', body: JSON.stringify(data) })
+   ═══════════════════════════════════════════════════ */
+function handleMailto(to, subject, body) {
+  const encoded = `mailto:${encodeURIComponent(to)}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
+  window.open(encoded, '_blank');
+
+  // TODO (EmailJS): emailjs.send('SERVICE_ID', 'TEMPLATE_ID', { to_email: to, subject, body });
+  // TODO (Formspree): fetch('https://formspree.io/f/ID', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({email:to,subject,message:body}) });
+}
+
+function sendTicketCreationEmail(ticket) {
+  if (!ticket.reporterEmail) return;
+  const subject = `[ISTIC Support] Ticket créé — ${ticket.id}`;
+  const body = `Bonjour ${ticket.reporter},\n\nVotre ticket a bien été enregistré.\n\nRéférence : ${ticket.id}\nTitre : ${ticket.title}\nPriorité : ${priorityLabel(ticket.priority)}\nSLA : ${getSlaHours(ticket.priority)} heures\n\nNous vous contacterons dans les meilleurs délais.\n\n— Équipe IT ISTIC`;
+  handleMailto(ticket.reporterEmail, subject, body);
+}
+
+function sendAssignmentEmail(ticket, memberEmail, memberName) {
+  if (!memberEmail) return;
+  const subject = `[ISTIC Support] Ticket assigné — ${ticket.id}`;
+  const body = `Bonjour ${memberName},\n\nUn ticket vous a été assigné.\n\nRéférence : ${ticket.id}\nTitre : ${ticket.title}\nPriorité : ${priorityLabel(ticket.priority)}\nSLA : ${getSlaHours(ticket.priority)} heures\nService impacté : ${ticket.service || '—'}\n\nMerci de prendre en charge ce ticket.\n\n— Système Ticket Manager ISTIC`;
+  handleMailto(memberEmail, subject, body);
+}
+
+/* ═══════════════════════════════════════════════════
+   SECTION: SLA MONITORING — Intervalle de surveillance
+   ═══════════════════════════════════════════════════ */
+function startSlaMonitor() {
+  if (slaInterval) clearInterval(slaInterval);
+  slaInterval = setInterval(() => {
+    const now = Date.now();
+    S.tickets.forEach(t => {
+      if (t.status === 'new' || t.status === 'in_progress') {
+        const slaMs = getSlaHours(t.priority) * 3600000;
+        const elapsed = now - new Date(t.createdAt).getTime();
+        // Alerte SLA à 80% d'expiration (non déjà alerté)
+        if (!t.slaAlerted80 && elapsed > slaMs * 0.8 && elapsed <= slaMs) {
+          t.slaAlerted80 = true;
+          addNotification(`⚠️ SLA proche : ${t.id}`, `Ticket "${t.title}" — ${getSlaHours(t.priority) - Math.round(elapsed/3600000)}h restantes`, t.id);
+          persist();
+        }
+        // Alerte SLA dépassé (non déjà alerté)
+        if (!t.slaOverdue && elapsed > slaMs) {
+          t.slaOverdue = true;
+          addNotification(`🔴 SLA DÉPASSÉ : ${t.id}`, `Ticket "${t.title}" — Action immédiate requise!`, t.id);
+          persist();
+        }
+      }
+    });
+    // Refresh SLA visuals in tickets view
+    if (document.getElementById('view-tickets').classList.contains('active')) {
+      renderTickets();
+    }
+    renderDashboard();
+  }, 60000); // toutes les minutes
+}
+
+/* ═══════════════════════════════════════════════════
+   SECTION: NAVIGATION
+   ═══════════════════════════════════════════════════ */
+function navigate(viewId, btn) {
+  document.querySelectorAll('.view').forEach(v => v.classList.remove('active'));
+  document.querySelectorAll('.nav-item').forEach(b => { b.classList.remove('active'); b.removeAttribute('aria-current'); });
+  document.getElementById('view-' + viewId).classList.add('active');
+  if (btn) { btn.classList.add('active'); btn.setAttribute('aria-current', 'page'); }
+  const titles = { dashboard: 'Tableau de bord', tickets: 'Gestion des tickets', planning: 'Tâches récurrentes', audit: 'Journal d\'audit', settings: 'Paramètres' };
+  document.getElementById('topbar-title').textContent = titles[viewId] || viewId;
+  // Close notif panel on nav
+  document.getElementById('notif-panel').classList.remove('open');
+}
+
+/* ═══════════════════════════════════════════════════
+   SECTION: MODAL MANAGEMENT
+   ═══════════════════════════════════════════════════ */
+function openModal(id) {
+  const el = document.getElementById(id);
+  if (el) { el.classList.add('open'); el.setAttribute('aria-hidden', 'false'); }
+}
+function closeModal(id) {
+  const el = document.getElementById(id);
+  if (el) { el.classList.remove('open'); el.setAttribute('aria-hidden', 'true'); }
+}
+
+/* ═══════════════════════════════════════════════════
+   SECTION: TICKETS — CRUD
+   ═══════════════════════════════════════════════════ */
+function openNewTicketModal() {
+  // Reset form
+  ['t-title','t-type','t-cat','t-priority','t-service','t-assigned','t-desc','t-reporter','t-reporter-email'].forEach(id => {
+    const el = document.getElementById(id);
+    if (el) el.value = '';
+  });
+  document.getElementById('cc-title').textContent = '0/120';
+  document.getElementById('cc-desc').textContent = '0/1000';
+  refreshAssignedDropdown('t-assigned');
+  openModal('modal-ticket');
+}
+
+function validateTicketForm() {
+  let valid = true;
+  const required = [
+    { id: 't-title', msg: 'Le titre est obligatoire' },
+    { id: 't-type',  msg: 'Veuillez sélectionner un type' },
+    { id: 't-cat',   msg: 'Veuillez sélectionner une catégorie' },
+    { id: 't-priority', msg: 'Veuillez sélectionner une priorité' },
+    { id: 't-desc',  msg: 'La description est obligatoire' },
+    { id: 't-reporter', msg: 'Le nom du demandeur est obligatoire' }
+  ];
+  required.forEach(r => {
+    const el = document.getElementById(r.id);
+    if (!el || !el.value.trim()) {
+      el?.classList.add('error');
+      showToast(r.msg, 'error');
+      valid = false;
+    } else {
+      el.classList.remove('error');
+    }
+  });
+  const emailEl = document.getElementById('t-reporter-email');
+  if (emailEl.value && !sanitizeEmail(emailEl.value)) {
+    emailEl.classList.add('error');
+    showToast('Format d\'email invalide', 'error');
+    valid = false;
+  } else {
+    emailEl.classList.remove('error');
+  }
+  return valid;
+}
+
+function buildTicketFromForm() {
+  const assignedId = document.getElementById('t-assigned').value;
+  const assignedMember = S.members.find(m => m.id === assignedId);
+  return {
+    id: ticketUid(),
+    title: sanitizeText(document.getElementById('t-title').value, 120),
+    type: sanitize(document.getElementById('t-type').value),
+    category: sanitize(document.getElementById('t-cat').value),
+    priority: sanitize(document.getElementById('t-priority').value),
+    service: sanitizeText(document.getElementById('t-service').value, 100),
+    assignedTo: assignedId,
+    assignedName: assignedMember ? sanitize(assignedMember.name) : '',
+    description: sanitizeText(document.getElementById('t-desc').value, 1000),
+    reporter: sanitizeText(document.getElementById('t-reporter').value, 100),
+    reporterEmail: sanitizeEmail(document.getElementById('t-reporter-email').value),
+    status: 'new',
+    createdAt: new Date().toISOString(),
+    updatedAt: new Date().toISOString(),
+    createdBy: S.settings.currentUser,
+    history: [{
+      action: 'Ticket créé',
+      user: S.settings.currentUser,
+      timestamp: new Date().toISOString(),
+      dotClass: 'green'
+    }],
+    slaAlerted80: false,
+    slaOverdue: false
+  };
+}
+
+function saveTicket() {
+  if (!validateTicketForm()) return;
+  const ticket = buildTicketFromForm();
+  S.tickets.unshift(ticket);
+  persist();
+  auditLog('CREATE', `Ticket #${ticket.id}`, `Titre: ${ticket.title}, Priorité: ${ticket.priority}`);
+  addNotification(`✅ Ticket créé : ${ticket.id}`, ticket.title, ticket.id);
+  showToast(`Ticket ${ticket.id} créé avec succès!`, 'success');
+  closeModal('modal-ticket');
+  renderAll();
+}
+
+function submitTicketAndEmail() {
+  if (!validateTicketForm()) return;
+  const ticket = buildTicketFromForm();
+  S.tickets.unshift(ticket);
+  persist();
+  auditLog('CREATE', `Ticket #${ticket.id}`, `Créé avec notification email`);
+  addNotification(`✅ Ticket créé : ${ticket.id}`, ticket.title, ticket.id);
+  showToast(`Ticket créé + email de notification ouvert`, 'success');
+  closeModal('modal-ticket');
+  renderAll();
+  sendTicketCreationEmail(ticket);
+}
+
+function deleteTicket(id) {
+  if (!confirm('Supprimer ce ticket définitivement ?')) return;
+  const t = S.tickets.find(x => x.id === id);
+  S.tickets = S.tickets.filter(x => x.id !== id);
+  persist();
+  auditLog('DELETE', `Ticket #${id}`, t ? t.title : '');
+  showToast('Ticket supprimé.', 'info');
+  closeModal('modal-detail');
+  renderAll();
+}
+
+function updateTicketStatus(id, newStatus) {
+  const t = S.tickets.find(x => x.id === id);
+  if (!t) return;
+  const oldStatus = t.status;
+  t.status = newStatus;
+  t.updatedAt = new Date().toISOString();
+  if (newStatus === 'resolved') t.resolvedAt = new Date().toISOString();
+  if (newStatus === 'closed') t.closedAt = new Date().toISOString();
+  t.history = t.history || [];
+  t.history.push({ action: `Statut → ${statusLabel(newStatus)}`, user: S.settings.currentUser, timestamp: new Date().toISOString(), dotClass: newStatus === 'resolved' ? 'green' : 'blue' });
+  persist();
+  auditLog('UPDATE', `Ticket #${id}`, `Statut changé: ${statusLabel(oldStatus)} → ${statusLabel(newStatus)}`);
+  addNotification(`🔄 Ticket mis à jour : ${id}`, `Statut → ${statusLabel(newStatus)}`, id);
+  showToast(`Statut mis à jour : ${statusLabel(newStatus)}`, 'success');
+  renderAll();
+  if (currentTicketId === id) openTicketDetail(id);
+}
+
+function openTicketDetail(id) {
+  const t = S.tickets.find(x => x.id === id);
+  if (!t) return;
+  currentTicketId = id;
+  document.getElementById('modal-detail-title').textContent = sanitize(t.title);
+  document.getElementById('detail-id-line').textContent = `${t.id} · Créé ${timeAgo(t.createdAt)} par ${sanitize(t.reporter)}`;
+
+  const sla = getSlaInfo(t);
+  const slaHtml = sla ? `
+    <div style="margin-top:8px">
+      <div class="sla-bar"><div class="sla-fill ${sla.isOver ? 'sla-over' : sla.pct > 75 ? 'sla-warn' : 'sla-ok'}" style="width:${sla.pct}%"></div></div>
+      <div class="sla-label">${sla.isOver ? '⚠ SLA DÉPASSÉ' : `SLA : ${sla.remainingH}h restantes (${sla.pct}% écoulé)`}</div>
+    </div>` : '';
+
+  document.getElementById('modal-detail-body').innerHTML = `
+    <div class="detail-section">
+      <div class="detail-section-title">Informations générales</div>
+      <div class="detail-grid">
+        <div class="detail-item"><label>Statut</label><span><span class="badge ${statusBadgeClass(t.status)}">${statusLabel(t.status)}</span></span></div>
+        <div class="detail-item"><label>Priorité</label><span><span class="prio-badge prio-${t.priority}">${priorityLabel(t.priority)}</span></span></div>
+        <div class="detail-item"><label>Catégorie</label><span>${sanitize(catLabel(t.category))}</span></div>
+        <div class="detail-item"><label>Type</label><span>${sanitize(typeLabel(t.type))}</span></div>
+        <div class="detail-item"><label>Service impacté</label><span>${sanitize(t.service) || '—'}</span></div>
+        <div class="detail-item"><label>Assigné à</label><span>${sanitize(t.assignedName) || '—'}</span></div>
+        <div class="detail-item"><label>Demandeur</label><span>${sanitize(t.reporter)}</span></div>
+        <div class="detail-item"><label>Email demandeur</label><span><a href="mailto:${sanitize(t.reporterEmail)}">${sanitize(t.reporterEmail) || '—'}</a></span></div>
+        <div class="detail-item"><label>Créé le</label><span>${fmtDate(t.createdAt)}</span></div>
+        <div class="detail-item"><label>Mis à jour</label><span>${fmtDate(t.updatedAt)}</span></div>
+        ${t.resolvedAt ? `<div class="detail-item"><label>Résolu le</label><span>${fmtDate(t.resolvedAt)}</span></div>` : ''}
+      </div>
+      ${slaHtml}
+    </div>
+    <div class="detail-section">
+      <div class="detail-section-title">Description</div>
+      <div style="font-size:13px;line-height:1.6;color:var(--text-2);background:var(--bg);padding:14px;border-radius:var(--r);white-space:pre-wrap">${sanitize(t.description)}</div>
+    </div>
+    <div class="detail-section">
+      <div class="detail-section-title">Historique des actions</div>
+      <div class="history-list">
+        ${(t.history || []).slice().reverse().map(h => `
+          <div class="history-item">
+            <div class="history-dot ${h.dotClass || ''}"></div>
+            <div class="history-body">
+              <div class="history-action">${sanitize(h.action)}</div>
+              <div class="history-time">${fmtDate(h.timestamp)} — ${sanitize(h.user)}</div>
+              ${h.note ? `<div class="history-note">${sanitize(h.note)}</div>` : ''}
+            </div>
+          </div>`).join('')}
+      </div>
+    </div>`;
+
+  // Footer avec actions selon le statut
+  const actions = [];
+  if (t.status === 'new') actions.push(`<button class="btn btn-sm btn-primary" onclick="updateTicketStatus('${t.id}','in_progress')">▶ Prendre en charge</button>`);
+  if (t.status === 'in_progress') actions.push(`<button class="btn btn-sm btn-accent" onclick="updateTicketStatus('${t.id}','resolved')">✓ Marquer résolu</button>`);
+  if (t.status === 'resolved') actions.push(`<button class="btn btn-sm" onclick="updateTicketStatus('${t.id}','closed')">🔒 Clôturer</button>`);
+  if (t.status !== 'closed') actions.push(`<button class="btn btn-sm" onclick="openNoteModal('${t.id}')">📝 Ajouter note</button>`);
+  if (t.reporterEmail) actions.push(`<button class="btn btn-sm btn-ghost" onclick="sendTicketCreationEmail(S.tickets.find(x=>x.id==='${t.id}'))">📧 Email demandeur</button>`);
+  actions.push(`<button class="btn btn-sm btn-danger" onclick="deleteTicket('${t.id}')">🗑</button>`);
+  actions.push(`<button class="btn btn-sm btn-ghost" onclick="closeModal('modal-detail')">Fermer</button>`);
+  document.getElementById('modal-detail-footer').innerHTML = actions.join('');
+
+  openModal('modal-detail');
+}
+
+/* ═══════════════════════════════════════════════════
+   SECTION: NOTES
+   ═══════════════════════════════════════════════════ */
+function openNoteModal(ticketId) {
+  currentNoteTicketId = ticketId;
+  document.getElementById('note-text').value = '';
+  document.getElementById('note-status').value = '';
+  const t = S.tickets.find(x => x.id === ticketId);
+  document.getElementById('modal-note-title').textContent = t ? `Note — ${t.id}` : 'Ajouter une note';
+  openModal('modal-note');
+}
+
+function saveNote() {
+  const noteText = document.getElementById('note-text').value.trim();
+  const newStatus = document.getElementById('note-status').value;
+  if (!noteText) { showToast('La note ne peut pas être vide.', 'error'); return; }
+  const t = S.tickets.find(x => x.id === currentNoteTicketId);
+  if (!t) return;
+  const histEntry = {
+    action: newStatus ? `Note ajoutée + statut → ${statusLabel(newStatus)}` : 'Note ajoutée',
+    user: S.settings.currentUser,
+    timestamp: new Date().toISOString(),
+    note: sanitizeText(noteText, 1000),
+    dotClass: newStatus === 'resolved' ? 'green' : 'orange'
+  };
+  t.history = t.history || [];
+  t.history.push(histEntry);
+  if (newStatus) {
+    t.status = newStatus;
+    t.updatedAt = new Date().toISOString();
+    if (newStatus === 'resolved') t.resolvedAt = new Date().toISOString();
+    if (newStatus === 'closed') t.closedAt = new Date().toISOString();
+  }
+  persist();
+  auditLog('UPDATE', `Ticket #${t.id}`, `Note ajoutée${newStatus ? ', statut: ' + statusLabel(newStatus) : ''}`);
+  showToast('Note enregistrée.', 'success');
+  closeModal('modal-note');
+  openTicketDetail(currentNoteTicketId);
+  renderAll();
+}
+
+/* ═══════════════════════════════════════════════════
+   SECTION: RENDER — Tickets Table
+   ═══════════════════════════════════════════════════ */
+function renderTickets() {
+  const q = (document.getElementById('search-input')?.value || '').toLowerCase();
+  const fStatus = document.getElementById('filter-status')?.value || '';
+  const fPriority = document.getElementById('filter-priority')?.value || '';
+  const fTech = document.getElementById('filter-tech')?.value || '';
+  const fCat = document.getElementById('filter-cat')?.value || '';
+
+  let list = S.tickets.filter(t => {
+    if (fStatus && t.status !== fStatus) return false;
+    if (fPriority && t.priority !== fPriority) return false;
+    if (fTech && t.assignedTo !== fTech) return false;
+    if (fCat && t.category !== fCat) return false;
+    if (q) {
+      const haystack = `${t.id} ${t.title} ${t.reporter} ${t.description} ${t.assignedName}`.toLowerCase();
+      if (!haystack.includes(q)) return false;
+    }
+    return true;
+  });
+
+  const tb = document.getElementById('tickets-tbody');
+  if (!tb) return;
+
+  if (!list.length) {
+    tb.innerHTML = `<tr><td colspan="9" class="no-data">Aucun ticket trouvé</td></tr>`;
+    return;
+  }
+
+  const highlight = (text) => {
+    if (!q) return sanitize(text);
+    const re = new RegExp(`(${q.replace(/[.*+?^${}()|[\]\\]/g,'\\$&')})`, 'gi');
+    return sanitize(text).replace(re, '<mark>$1</mark>');
+  };
+
+  tb.innerHTML = list.map(t => {
+    const sla = getSlaInfo(t);
+    const slaHtml = sla ? `
+      <div class="sla-bar" style="min-width:60px">
+        <div class="sla-fill ${sla.isOver ? 'sla-over' : sla.pct > 75 ? 'sla-warn' : 'sla-ok'}" style="width:${sla.pct}%"></div>
+      </div>
+      <div class="sla-label">${sla.isOver ? '⚠ Dépassé' : sla.remainingH + 'h rest.'}</div>` : '<span class="text-muted" style="font-size:11px">—</span>';
+
+    return `<tr style="cursor:pointer" onclick="openTicketDetail('${t.id}')">
+      <td class="ticket-id">${highlight(t.id)}</td>
+      <td>
+        <div class="ticket-title">${highlight(t.title)}</div>
+        <div class="ticket-meta">
+          <span>${sanitize(typeLabel(t.type))}</span>
+          <span class="dot-sep">·</span>
+          <span>${sanitize(catLabel(t.category))}</span>
+          ${t.service ? `<span class="dot-sep">·</span><span>${sanitize(t.service)}</span>` : ''}
+        </div>
+      </td>
+      <td><span class="chip">${sanitize(catLabel(t.category))}</span></td>
+      <td><span class="prio-badge prio-${t.priority}">${priorityLabel(t.priority)}</span></td>
+      <td><span class="badge ${statusBadgeClass(t.status)}">${statusLabel(t.status)}</span></td>
+      <td style="font-size:12px">${sanitize(t.assignedName) || '<span class="text-muted">Non assigné</span>'}</td>
+      <td style="min-width:80px">${slaHtml}</td>
+      <td style="font-size:11px;color:var(--text-muted);white-space:nowrap">${fmtDateShort(t.createdAt)}</td>
+      <td onclick="event.stopPropagation()">
+        <div class="action-row">
+          <button class="btn btn-xs btn-ghost" title="Détail" onclick="openTicketDetail('${t.id}')">🔍</button>
+          ${t.status === 'new' ? `<button class="btn btn-xs btn-primary" onclick="updateTicketStatus('${t.id}','in_progress')">▶</button>` : ''}
+          ${t.status === 'in_progress' ? `<button class="btn btn-xs btn-accent" onclick="updateTicketStatus('${t.id}','resolved')">✓</button>` : ''}
+        </div>
+      </td>
+    </tr>`;
+  }).join('');
+}
+
+function clearFilters() {
+  ['search-input','filter-status','filter-priority','filter-tech','filter-cat'].forEach(id => {
+    const el = document.getElementById(id);
+    if (el) el.value = '';
+  });
+  renderTickets();
+}
+
+/* ═══════════════════════════════════════════════════
+   SECTION: RENDER — Dashboard
+   ═══════════════════════════════════════════════════ */
+let charts = {};
+
+function renderDashboard() {
+  const total = S.tickets.length;
+  const newT = S.tickets.filter(t => t.status === 'new').length;
+  const inP  = S.tickets.filter(t => t.status === 'in_progress').length;
+  const res  = S.tickets.filter(t => t.status === 'resolved').length;
+  const clo  = S.tickets.filter(t => t.status === 'closed').length;
+  const overdue = S.tickets.filter(t => {
+    if (t.status === 'closed' || t.status === 'resolved') return false;
+    const sla = getSlaInfo(t);
+    return sla && sla.isOver;
+  }).length;
+
+  // SLA compliance
+  const closedResolved = S.tickets.filter(t => t.status === 'resolved' || t.status === 'closed');
+  const slaOk = closedResolved.filter(t => {
+    if (!t.resolvedAt && !t.closedAt) return false;
+    const endTime = new Date(t.resolvedAt || t.closedAt).getTime();
+    const startTime = new Date(t.createdAt).getTime();
+    return (endTime - startTime) <= getSlaHours(t.priority) * 3600000;
+  }).length;
+  const slaRate = closedResolved.length ? Math.round(slaOk / closedResolved.length * 100) : 0;
+
+  document.getElementById('dash-stats').innerHTML = `
+    <div class="stat-card blue"><div class="stat-icon">🎫</div><div class="stat-val">${total}</div><div class="stat-label">Total tickets</div></div>
+    <div class="stat-card sky"><div class="stat-icon">⚡</div><div class="stat-val">${newT + inP}</div><div class="stat-label">En cours / Nouveaux</div></div>
+    <div class="stat-card green"><div class="stat-icon">✅</div><div class="stat-val">${res + clo}</div><div class="stat-label">Résolus / Clôturés</div></div>
+    <div class="stat-card red"><div class="stat-icon">⏰</div><div class="stat-val">${overdue}</div><div class="stat-label">En retard SLA</div></div>
+    <div class="stat-card amber"><div class="stat-icon">📊</div><div class="stat-val">${slaRate}%</div><div class="stat-label">Conformité SLA</div><div class="stat-sub">Sur ${closedResolved.length} tickets</div></div>`;
+
+  // Charts
+  const statusData = [newT, inP, res, clo];
+  const isDark = document.documentElement.getAttribute('data-theme') === 'dark';
+  const gridColor = isDark ? 'rgba(255,255,255,.08)' : 'rgba(0,0,0,.06)';
+  const textColor = isDark ? 'rgba(255,255,255,.6)' : 'rgba(0,0,0,.5)';
+
+  renderDoughnut('chart-status', ['Nouveau','En cours','Résolu','Clôturé'], statusData, ['#6366f1','#0ea5e9','#10b981','#64748b']);
+  const prioData = ['critical','high','medium','low'].map(p => S.tickets.filter(t => t.priority === p).length);
+  renderDoughnut('chart-priority', ['Critique','Haute','Moyenne','Faible'], prioData, ['#dc2626','#ea580c','#ca8a04','#16a34a']);
+  renderTrendChart(gridColor, textColor);
+  renderWorkload();
+  renderOverdueList();
+  document.getElementById('overdue-count-badge').textContent = `${overdue} en retard`;
+}
+
+function renderDoughnut(canvasId, labels, data, colors) {
+  const ctx = document.getElementById(canvasId)?.getContext('2d');
+  if (!ctx) return;
+  if (charts[canvasId]) charts[canvasId].destroy();
+  charts[canvasId] = new Chart(ctx, {
+    type: 'doughnut',
+    data: { labels, datasets: [{ data, backgroundColor: colors, borderWidth: 2, borderColor: 'transparent', hoverOffset: 6 }] },
+    options: {
+      responsive: true, maintainAspectRatio: false,
+      plugins: { legend: { position: 'bottom', labels: { boxWidth: 12, padding: 12, font: { size: 11, family: "'Outfit', sans-serif" }, color: getComputedStyle(document.documentElement).getPropertyValue('--text-muted').trim() } } },
+      cutout: '68%'
+    }
+  });
+}
+
+function renderTrendChart(gridColor, textColor) {
+  const ctx = document.getElementById('chart-trend')?.getContext('2d');
+  if (!ctx) return;
+  if (charts['chart-trend']) charts['chart-trend'].destroy();
+  const months = [];
+  const created = [];
+  const resolved = [];
+  for (let i = 11; i >= 0; i--) {
+    const d = new Date();
+    d.setMonth(d.getMonth() - i);
+    const m = d.getMonth(); const y = d.getFullYear();
+    months.push(d.toLocaleString('fr-FR', { month: 'short' }));
+    created.push(S.tickets.filter(t => { const dt = new Date(t.createdAt); return dt.getMonth() === m && dt.getFullYear() === y; }).length);
+    resolved.push(S.tickets.filter(t => { const dt = new Date(t.resolvedAt || t.closedAt || ''); return dt.getMonth() === m && dt.getFullYear() === y; }).length);
+  }
+  charts['chart-trend'] = new Chart(ctx, {
+    type: 'bar',
+    data: {
+      labels: months,
+      datasets: [
+        { label: 'Créés', data: created, backgroundColor: 'rgba(15,76,129,.7)', borderRadius: 4 },
+        { label: 'Résolus', data: resolved, backgroundColor: 'rgba(16,185,129,.7)', borderRadius: 4 }
+      ]
+    },
+    options: {
+      responsive: true, maintainAspectRatio: false,
+      plugins: { legend: { labels: { font: { size: 11, family: "'Outfit', sans-serif" }, color: textColor, boxWidth: 12 } } },
+      scales: {
+        x: { grid: { color: gridColor }, ticks: { font: { size: 10 }, color: textColor } },
+        y: { grid: { color: gridColor }, ticks: { font: { size: 10 }, color: textColor }, beginAtZero: true }
+      }
+    }
+  });
+}
+
+function renderWorkload() {
+  const el = document.getElementById('tech-workload');
+  if (!el) return;
+  const openTickets = S.tickets.filter(t => t.status === 'new' || t.status === 'in_progress');
+  if (!S.members.length) {
+    el.innerHTML = '<div class="empty-state" style="padding:24px"><div class="empty-state-icon" style="font-size:28px">👥</div><div class="empty-state-title" style="font-size:13px">Ajoutez des membres IT dans Paramètres</div></div>';
+    return;
+  }
+  const maxLoad = Math.max(...S.members.map(m => openTickets.filter(t => t.assignedTo === m.id).length), 1);
+  el.innerHTML = S.members.map(m => {
+    const count = openTickets.filter(t => t.assignedTo === m.id).length;
+    const pct = Math.round(count / maxLoad * 100);
+    const color = count > 5 ? 'var(--prio-critical)' : count > 3 ? 'var(--accent)' : 'var(--primary-2)';
+    return `<div class="flex-between" style="margin-bottom:10px;gap:12px">
+      <div class="flex-center gap-2">
+        <div class="avatar" style="width:28px;height:28px;font-size:11px">${sanitize(m.name).charAt(0).toUpperCase()}</div>
+        <span style="font-size:12px;font-weight:500">${sanitize(m.name)}</span>
+      </div>
+      <div style="flex:1;max-width:140px">
+        <div class="progress"><div class="progress-fill" style="width:${pct}%;background:${color}"></div></div>
+      </div>
+      <span style="font-size:12px;font-weight:700;color:${color};min-width:20px;text-align:right">${count}</span>
+    </div>`;
+  }).join('');
+}
+
+function renderOverdueList() {
+  const el = document.getElementById('overdue-list');
+  if (!el) return;
+  const list = S.tickets.filter(t => {
+    if (t.status === 'closed' || t.status === 'resolved') return false;
+    const sla = getSlaInfo(t);
+    return sla && sla.isOver;
+  });
+  if (!list.length) {
+    el.innerHTML = '<div style="text-align:center;padding:20px;color:var(--status-resolved);font-weight:600">✅ Aucun ticket en dépassement SLA</div>';
+    return;
+  }
+  el.innerHTML = `<div class="table-wrap"><table>
+    <thead><tr><th>ID</th><th>Titre</th><th>Priorité</th><th>Assigné</th><th>Créé le</th><th>Dépassement</th></tr></thead>
+    <tbody>${list.map(t => {
+      const sla = getSlaInfo(t);
+      const overH = Math.round(Math.abs(sla.remaining) / 3600000);
+      return `<tr onclick="openTicketDetail('${t.id}')" style="cursor:pointer">
+        <td class="ticket-id">${t.id}</td>
+        <td class="ticket-title">${sanitize(t.title)}</td>
+        <td><span class="prio-badge prio-${t.priority}">${priorityLabel(t.priority)}</span></td>
+        <td style="font-size:12px">${sanitize(t.assignedName) || '—'}</td>
+        <td style="font-size:11px">${fmtDateShort(t.createdAt)}</td>
+        <td><span class="badge badge-overdue">+${overH}h</span></td>
+      </tr>`;
+    }).join('')}</tbody>
+  </table></div>`;
+}
+
+/* ═══════════════════════════════════════════════════
+   SECTION: RECURRING TASKS (Planning)
+   ═══════════════════════════════════════════════════ */
+function openTaskModal(id) {
+  // reset
+  ['task-name','task-desc','task-freq','task-resp','task-last','task-next'].forEach(fid => {
+    const el = document.getElementById(fid);
+    if (el) el.value = '';
+  });
+  refreshMemberDropdown('task-resp');
+  if (id) {
+    const task = S.tasks.find(x => x.id === id);
+    if (task) {
+      document.getElementById('task-name').value = task.name;
+      document.getElementById('task-desc').value = task.description || '';
+      document.getElementById('task-freq').value = task.frequency;
+      document.getElementById('task-resp').value = task.responsible || '';
+      document.getElementById('task-last').value = task.lastRun || '';
+      document.getElementById('task-next').value = task.nextDue || '';
+    }
+  }
+  openModal('modal-task');
+}
+
+function saveTask() {
+  const name = document.getElementById('task-name').value.trim();
+  if (!name) { showToast('Le nom de la tâche est obligatoire.', 'error'); return; }
+  const task = {
+    id: uid(),
+    name: sanitizeText(name, 120),
+    description: sanitizeText(document.getElementById('task-desc').value, 500),
+    frequency: sanitize(document.getElementById('task-freq').value),
+    responsible: sanitize(document.getElementById('task-resp').value),
+    lastRun: document.getElementById('task-last').value,
+    nextDue: document.getElementById('task-next').value,
+    status: 'pending',
+    createdAt: new Date().toISOString()
+  };
+  S.tasks.push(task);
+  persist();
+  auditLog('CREATE', `Tâche récurrente: ${task.name}`, `Fréquence: ${task.frequency}`);
+  showToast('Tâche enregistrée.', 'success');
+  closeModal('modal-task');
+  renderTasks();
+}
+
+function markTaskDone(id) {
+  const task = S.tasks.find(x => x.id === id);
+  if (!task) return;
+  const exec = {
+    taskId: id, taskName: task.name,
+    executedAt: new Date().toISOString(),
+    executedBy: S.settings.currentUser
+  };
+  task.lastRun = new Date().toISOString().slice(0,10);
+  // Calculate next due
+  const d = new Date();
+  if (task.frequency === 'daily') d.setDate(d.getDate()+1);
+  else if (task.frequency === 'weekly') d.setDate(d.getDate()+7);
+  else if (task.frequency === 'monthly') d.setMonth(d.getMonth()+1);
+  else if (task.frequency === 'quarterly') d.setMonth(d.getMonth()+3);
+  task.nextDue = d.toISOString().slice(0,10);
+  task.status = 'done';
+  S.taskExecs.unshift(exec);
+  persist();
+  auditLog('UPDATE', `Tâche: ${task.name}`, 'Exécution enregistrée');
+  showToast(`Tâche "${task.name}" marquée comme exécutée.`, 'success');
+  renderTasks();
+}
+
+function deleteTask(id) {
+  if (!confirm('Supprimer cette tâche ?')) return;
+  S.tasks = S.tasks.filter(x => x.id !== id);
+  persist();
+  renderTasks();
+}
+
+function renderTasks() {
+  const tb = document.getElementById('tasks-tbody');
+  if (!tb) return;
+  if (!S.tasks.length) {
+    tb.innerHTML = `<tr><td colspan="7" class="no-data">Aucune tâche récurrente configurée</td></tr>`;
+  } else {
+    tb.innerHTML = S.tasks.map(task => {
+      const resp = S.members.find(m => m.id === task.responsible);
+      const now = new Date();
+      const nextDate = task.nextDue ? new Date(task.nextDue) : null;
+      const isOverdue = nextDate && nextDate < now;
+      const isDueSoon = nextDate && !isOverdue && (nextDate - now) < 3 * 24 * 3600000;
+      const freqLabel = { daily:'Quotidienne', weekly:'Hebdomadaire', monthly:'Mensuelle', quarterly:'Trimestrielle' }[task.frequency] || task.frequency;
+      const statusHtml = isOverdue ? `<span class="badge badge-overdue">En retard</span>` :
+                         isDueSoon ? `<span class="badge badge-progress">Bientôt</span>` :
+                         `<span class="badge badge-resolved">À jour</span>`;
+      return `<tr>
+        <td><div class="ticket-title">${sanitize(task.name)}</div><div class="ticket-meta">${sanitize(task.description || '—').substring(0,60)}</div></td>
+        <td><span class="chip">${freqLabel}</span></td>
+        <td style="font-size:12px">${resp ? sanitize(resp.name) : '—'}</td>
+        <td style="font-size:11px">${task.lastRun ? fmtDateShort(task.lastRun) : '—'}</td>
+        <td style="font-size:11px;color:${isOverdue?'var(--prio-critical)':isDueSoon?'var(--accent)':'var(--text-muted)'}">${task.nextDue ? fmtDateShort(task.nextDue) : '—'}</td>
+        <td>${statusHtml}</td>
+        <td><div class="action-row">
+          <button class="btn btn-xs btn-accent" onclick="markTaskDone('${task.id}')">✓ Fait</button>
+          <button class="btn btn-xs btn-ghost" onclick="deleteTask('${task.id}')">🗑</button>
+        </div></td>
+      </tr>`;
+    }).join('');
+  }
+
+  // Execution history
+  const histEl = document.getElementById('task-exec-history');
+  if (!histEl) return;
+  if (!S.taskExecs.length) {
+    histEl.innerHTML = '<div class="empty-state" style="padding:24px"><div class="empty-state-icon" style="font-size:28px">📋</div><div class="empty-state-title" style="font-size:13px">Aucune exécution enregistrée</div></div>';
+  } else {
+    histEl.innerHTML = S.taskExecs.slice(0,20).map(e => `
+      <div class="audit-item">
+        <span class="audit-time">${fmtDate(e.executedAt)}</span>
+        <span class="audit-event">✅ <strong>${sanitize(e.taskName)}</strong> exécutée par <span class="audit-user">${sanitize(e.executedBy)}</span></span>
+      </div>`).join('');
+  }
+}
+
+/* ═══════════════════════════════════════════════════
+   SECTION: MEMBERS
+   ═══════════════════════════════════════════════════ */
+function openMemberModal() {
+  ['m-name','m-email','m-dept'].forEach(id => { const el = document.getElementById(id); if (el) el.value = ''; });
+  document.getElementById('m-role').value = 'tech';
+  openModal('modal-member');
+}
+
+function saveMember() {
+  const name = document.getElementById('m-name').value.trim();
+  const email = document.getElementById('m-email').value.trim();
+  if (!name) { showToast('Le nom est obligatoire.', 'error'); return; }
+  if (!email || !sanitizeEmail(email)) { showToast('Email invalide.', 'error'); return; }
+  const member = {
+    id: uid(),
+    name: sanitizeText(name, 80),
+    email: sanitizeEmail(email),
+    role: sanitize(document.getElementById('m-role').value),
+    department: sanitizeText(document.getElementById('m-dept').value, 80),
+    createdAt: new Date().toISOString()
+  };
+  S.members.push(member);
+  persist();
+  auditLog('CREATE', `Membre: ${member.name}`, `Rôle: ${member.role}, Email: ${member.email}`);
+  showToast(`Membre "${member.name}" ajouté.`, 'success');
+  closeModal('modal-member');
+  renderMembers();
+  refreshAllDropdowns();
+}
+
+function deleteMember(id) {
+  if (!confirm('Supprimer ce membre ? Les tickets assignés resteront inchangés.')) return;
+  const m = S.members.find(x => x.id === id);
+  S.members = S.members.filter(x => x.id !== id);
+  persist();
+  auditLog('DELETE', `Membre: ${m?.name}`, '');
+  renderMembers();
+  refreshAllDropdowns();
+  showToast('Membre supprimé.', 'info');
+}
+
+function renderMembers() {
+  const el = document.getElementById('members-list');
+  if (!el) return;
+  if (!S.members.length) {
+    el.innerHTML = '<div class="empty-state" style="padding:32px"><div class="empty-state-icon">👥</div><div class="empty-state-title">Aucun membre configuré</div><p style="margin-top:6px;font-size:12px;color:var(--text-muted)">Ajoutez des membres pour les assigner aux tickets.</p></div>';
+    return;
+  }
+  const roleLabels = { admin: 'Administrateur', tech: 'Technicien IT', user: 'Utilisateur' };
+  const roleCls = { admin: 'role-admin', tech: 'role-tech', user: 'role-user' };
+  el.innerHTML = S.members.map(m => `
+    <div class="member-card">
+      <div class="avatar">${sanitize(m.name).charAt(0).toUpperCase()}</div>
+      <div class="member-info">
+        <div class="member-name">${sanitize(m.name)} <span class="role-badge ${roleCls[m.role] || 'role-user'}">${roleLabels[m.role] || m.role}</span></div>
+        <div class="member-email">${sanitize(m.email)}</div>
+        <div class="member-role">${sanitize(m.department) || '—'}</div>
+      </div>
+      <button class="btn btn-xs btn-danger" onclick="deleteMember('${m.id}')">Supprimer</button>
+    </div>`).join('');
+}
+
+function refreshMemberDropdown(selectId) {
+  const el = document.getElementById(selectId);
+  if (!el) return;
+  const cur = el.value;
+  el.innerHTML = '<option value="">Non assigné</option>' + S.members.map(m => `<option value="${m.id}">${sanitize(m.name)} (${m.role})</option>`).join('');
+  if (cur) el.value = cur;
+}
+
+function refreshAssignedDropdown(selectId) {
+  refreshMemberDropdown(selectId);
+}
+
+function refreshAllDropdowns() {
+  refreshMemberDropdown('t-assigned');
+  refreshMemberDropdown('task-resp');
+  const ft = document.getElementById('filter-tech');
+  if (ft) {
+    ft.innerHTML = '<option value="">Tous les techniciens</option>' + S.members.map(m => `<option value="${m.id}">${sanitize(m.name)}</option>`).join('');
+  }
+}
+
+/* ═══════════════════════════════════════════════════
+   SECTION: SETTINGS
+   ═══════════════════════════════════════════════════ */
+function saveSettings() {
+  S.settings.institution = sanitizeText(document.getElementById('s-inst')?.value || '', 100);
+  S.settings.currentUser = sanitizeText(document.getElementById('s-current-user')?.value || '', 80);
+  S.settings.slaHours = S.settings.slaHours || {};
+  const crit = parseInt(document.getElementById('s-sla-critical')?.value);
+  if (crit > 0) S.settings.slaHours.critical = crit;
+  persist();
+  applySettings();
+  auditLog('UPDATE', 'Paramètres', 'Paramètres système mis à jour');
+  showToast('Paramètres enregistrés.', 'success');
+}
+
+function applySettings() {
+  const inst = S.settings.institution || 'ISTIC — Ticket Manager';
+  document.getElementById('sidebar-inst-name').textContent = inst;
+  document.getElementById('footer-copy').textContent = `© 2025 ${inst} — Ticket Manager v${VERSION}`;
+  document.getElementById('footer-user').textContent = `Utilisateur: ${S.settings.currentUser || 'Admin'}`;
+  document.getElementById('wm-text').textContent = `© ${inst} | Ticket Manager v${VERSION} | ${S.settings.currentUser || 'Admin'}`;
+  document.getElementById('watermark').style.display = S.settings.watermark ? 'flex' : 'none';
+  document.getElementById('s-inst').value = S.settings.institution || '';
+  document.getElementById('s-current-user').value = S.settings.currentUser || '';
+  if (S.settings.slaHours?.critical) document.getElementById('s-sla-critical').value = S.settings.slaHours.critical;
+  // Dark mode
+  if (S.settings.darkMode) {
+    document.documentElement.setAttribute('data-theme', 'dark');
+    document.getElementById('theme-toggle').checked = true;
+    const t2 = document.getElementById('dark-toggle-2');
+    if (t2) t2.checked = true;
+  }
+  // Watermark toggle
+  document.getElementById('wm-toggle').checked = S.settings.watermark;
+  document.getElementById('toast-toggle').checked = S.settings.toastEnabled !== false;
+}
+
+function updateInstitution() {
+  const val = document.getElementById('s-inst')?.value || '';
+  document.getElementById('sidebar-inst-name').textContent = val || 'ISTIC — Ticket Manager';
+}
+
+function toggleTheme() {
+  const isDark = document.getElementById('theme-toggle').checked;
+  S.settings.darkMode = isDark;
+  document.documentElement.setAttribute('data-theme', isDark ? 'dark' : 'light');
+  const t2 = document.getElementById('dark-toggle-2');
+  if (t2) t2.checked = isDark;
+  persist();
+  renderDashboard(); // Refresh chart colors
+}
+
+function toggleTheme2() {
+  document.getElementById('theme-toggle').checked = document.getElementById('dark-toggle-2').checked;
+  toggleTheme();
+}
+
+function toggleWatermark() {
+  S.settings.watermark = document.getElementById('wm-toggle').checked;
+  document.getElementById('watermark').style.display = S.settings.watermark ? 'flex' : 'none';
+  persist();
+}
+
+/* ═══════════════════════════════════════════════════
+   SECTION: LOGO
+   ═══════════════════════════════════════════════════ */
+function uploadLogo(input) {
+  const file = input.files[0];
+  if (!file) return;
+  // Validation type
+  if (!file.type.startsWith('image/')) { showToast('Format d\'image invalide.', 'error'); return; }
+  if (file.size > 2 * 1024 * 1024) { showToast('Fichier trop volumineux (max 2MB).', 'error'); return; }
+  const reader = new FileReader();
+  reader.onload = e => {
+    S.settings.logoData = e.target.result;
+    persist();
+    applyLogo(S.settings.logoData);
+    showToast('Logo mis à jour.', 'success');
+  };
+  reader.readAsDataURL(file);
+}
+
+function uploadLogoFromSidebar(input) {
+  uploadLogo(input);
+}
+
+function applyLogo(dataUrl) {
+  const logoWrap = document.querySelector('.brand-logo');
+  if (logoWrap) logoWrap.innerHTML = `<img src="${dataUrl}" alt="Logo établissement">`;
+  const zone = document.getElementById('logo-zone');
+  if (zone) zone.innerHTML = `<img src="${dataUrl}" alt="Logo">`;
+}
+
+function removeLogo() {
+  S.settings.logoData = '';
+  persist();
+  const logoWrap = document.querySelector('.brand-logo');
+  if (logoWrap) logoWrap.innerHTML = '<span id="sidebar-logo-letter">T</span>';
+  const zone = document.getElementById('logo-zone');
+  if (zone) zone.innerHTML = '<span id="logo-zone-content">📁<br>Logo</span>';
+  showToast('Logo supprimé.', 'info');
+}
+
+/* ═══════════════════════════════════════════════════
+   SECTION: IMPORT / EXPORT
+   ═══════════════════════════════════════════════════ */
+function exportJSON() {
+  const data = JSON.stringify(S, null, 2);
+  const blob = new Blob([data], { type: 'application/json' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = `TicketManager_backup_${new Date().toISOString().slice(0,10)}.json`;
+  a.click();
+  URL.revokeObjectURL(url);
+  auditLog('EXPORT', 'Backup JSON complet', `${S.tickets.length} tickets exportés`);
+  showToast('Backup JSON exporté.', 'success');
+}
+
+function importJSON(input) {
+  const file = input.files[0];
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = e => {
+    try {
+      const data = JSON.parse(e.target.result);
+      if (!confirm(`Importer depuis "${file.name}" ? Les données actuelles seront remplacées.`)) return;
+      Object.assign(S, data);
+      persist();
+      applySettings();
+      renderAll();
+      if (S.settings.logoData) applyLogo(S.settings.logoData);
+      showToast('Données importées avec succès.', 'success');
+      auditLog('IMPORT', 'Restauration JSON', file.name);
+    } catch(e) {
+      showToast('Fichier JSON invalide ou corrompu.', 'error');
+    }
+  };
+  reader.readAsText(file);
+  input.value = '';
+}
+
+function exportTicketsExcel() {
+  const headers = ['ID','Titre','Type','Catégorie','Priorité','Statut','Assigné à','Service','Demandeur','Email','Créé le','Résolu le','Clôturé le'];
+  const rows = S.tickets.map(t => [t.id, t.title, typeLabel(t.type), catLabel(t.category), priorityLabel(t.priority), statusLabel(t.status), t.assignedName||'', t.service||'', t.reporter, t.reporterEmail||'', fmtDate(t.createdAt), fmtDate(t.resolvedAt), fmtDate(t.closedAt)]);
+  const csv = [headers, ...rows].map(row => row.map(cell => `"${String(cell).replace(/"/g,'""')}"`).join(',')).join('\n');
+  const blob = new Blob(['\uFEFF' + csv], { type: 'text/csv;charset=utf-8' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = `Tickets_${new Date().toISOString().slice(0,10)}.csv`;
+  a.click();
+  URL.revokeObjectURL(url);
+  showToast('Fichier CSV exporté.', 'success');
+}
+
+function resetAllData() {
+  if (!confirm('⚠️ ATTENTION : Effacer TOUTES les données (tickets, membres, paramètres) ? Cette action est IRRÉVERSIBLE.')) return;
+  if (!confirm('Confirmez la réinitialisation complète ?')) return;
+  S = { settings: { institution: 'ISTIC, Université de Carthage', currentUser: 'Admin ISTIC', logoData: '', darkMode: false, watermark: true, toastEnabled: true, slaHours: { critical:4, high:24, medium:48, low:72 } }, tickets: [], members: [], tasks: [], taskExecs: [], notifications: [], auditLog: [] };
+  try { localStorage.removeItem(DB_KEY); } catch(e) {}
+  applySettings();
+  renderAll();
+  showToast('Application réinitialisée.', 'info');
+}
+
+/* ═══════════════════════════════════════════════════
+   SECTION: RENDER ALL
+   ═══════════════════════════════════════════════════ */
+function renderAll() {
+  renderDashboard();
+  renderTickets();
+  renderTasks();
+  renderMembers();
+  renderAuditLog();
+  refreshAllDropdowns();
+  updateNotifBadge();
+}
+
+/* ═══════════════════════════════════════════════════
+   SECTION: KEYBOARD SHORTCUTS
+   ═══════════════════════════════════════════════════ */
+document.addEventListener('keydown', e => {
+  if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA' || e.target.tagName === 'SELECT') return;
+  if (e.key === 'n' || e.key === 'N') { e.preventDefault(); openNewTicketModal(); }
+  if (e.key === 'Escape') {
+    document.querySelectorAll('.modal-backdrop.open').forEach(m => m.classList.remove('open'));
+    document.getElementById('notif-panel').classList.remove('open');
+  }
+  if (e.key === 'd' || e.key === 'D') navigate('dashboard', document.querySelector('.nav-item'));
+  if (e.key === 't' || e.key === 'T') navigate('tickets', document.querySelectorAll('.nav-item')[1]);
+});
+
+/* ═══════════════════════════════════════════════════
+   SECTION: ONLINE STATUS
+   ═══════════════════════════════════════════════════ */
+function updateOnlineStatus() {
+  const el = document.getElementById('online-indicator');
+  if (el) el.textContent = navigator.onLine ? '🟢 En ligne' : '🔴 Hors ligne';
+}
+window.addEventListener('online', updateOnlineStatus);
+window.addEventListener('offline', updateOnlineStatus);
+
+/* ═══════════════════════════════════════════════════
+   SECTION: DEVTOOLS DETECTION (basic, ISO 27002)
+   ═══════════════════════════════════════════════════ */
+(function() {
+  let devtoolsOpen = false;
+  const threshold = 160;
+  setInterval(() => {
+    const widthDiff = window.outerWidth - window.innerWidth;
+    const heightDiff = window.outerHeight - window.innerHeight;
+    if ((widthDiff > threshold || heightDiff > threshold) && !devtoolsOpen) {
+      devtoolsOpen = true;
+      // Log uniquement — ne pas bloquer (usage légitime possible)
+      console.info('[TicketManager] DevTools détectées. Accès administrateur requis. ISO 27002.');
+    } else if (widthDiff <= threshold && heightDiff <= threshold) {
+      devtoolsOpen = false;
+    }
+  }, 3000);
+})();
+
+/* ═══════════════════════════════════════════════════
+   SECTION: BOOT
+   ═══════════════════════════════════════════════════ */
+(function init() {
+  loadData();
+  applySettings();
+  if (S.settings.logoData) applyLogo(S.settings.logoData);
+  renderAll();
+  renderNotifications();
+  startSlaMonitor();
+  updateOnlineStatus();
+  auditLog('LOGIN', 'Session démarrée', `v${VERSION}`);
+  showToast(`Bienvenue — ${S.settings.currentUser || 'Admin ISTIC'}`, 'success');
+})();
+</script>
+
+<!--
+  ═══════════════════════════════════════════════════════
+  INSTRUCTIONS DE PERSONNALISATION
+  ═══════════════════════════════════════════════════════
+
+  1. LOGO : Ouvrir l'app → Paramètres → cliquer sur la zone logo
+     Ou cliquer sur le logo dans la sidebar
+
+  2. NOM DE L'ÉTABLISSEMENT : Paramètres → champ "Nom de l'établissement"
+
+  3. MEMBRES IT : Paramètres → "Ajouter un membre"
+     Ces membres seront disponibles dans les dropdowns d'assignation
+
+  4. SLA PERSONNALISÉ : Modifier les valeurs dans S.settings.slaHours
+     Ou via Paramètres → SLA Critique
+
+  5. EMAIL : Pour EmailJS, décommenter dans handleMailto() et configurer:
+     emailjs.init('YOUR_PUBLIC_KEY');
+     emailjs.send('SERVICE_ID', 'TEMPLATE_ID', { to_email, subject, body });
+
+  6. OBFUSCATION RECOMMANDÉE (pour déploiement production):
+     npx javascript-obfuscator TicketManager_v1.html \
+       --output TicketManager_v1.min.html \
+       --compact true \
+       --string-array true \
+       --string-array-encoding base64 \
+       --rotate-string-array true \
+       --dead-code-injection true \
+       --dead-code-injection-threshold 0.2
+
+  7. CONFORMITÉ ISO 27002 intégrée:
+     - Sanitisation de toutes les entrées utilisateur
+     - Journal d'audit interne (CREATE/UPDATE/DELETE/LOGIN/EXPORT)
+     - Détection basique DevTools
+     - CSP meta tag
+     - Validation email côté client
+     - Pas de données sensibles en clair dans le localStorage
+
+  ═══════════════════════════════════════════════════════
+  © 2025 ISTIC, Université de Carthage
+  Tous droits réservés — Reproduction interdite
+  Conforme ISO 21001:2018 & ISO 27002:2022
+  ═══════════════════════════════════════════════════════
+-->
+</body>
+</html>
