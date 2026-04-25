@@ -1,10 +1,10 @@
 # 🔴 Risk Manager — Registre des Risques & Opportunités
 
-> ISO 31000:2018 · ISO 21001:2018 · Standalone HTML Application
+> ISO 31000:2018 · ISO 21001:2025 · Standalone HTML Application
 
 [![Version](https://img.shields.io/badge/Latest-v2.0-blue?style=flat-square)](#versions)
 [![ISO 31000](https://img.shields.io/badge/ISO%2031000-2018-purple?style=flat-square)](https://www.iso.org/standard/65694.html)
-[![ISO 21001](https://img.shields.io/badge/ISO%2021001-2018-blue?style=flat-square)](https://www.iso.org/standard/66266.html)
+[![ISO 21001](https://img.shields.io/badge/ISO%2021001-2025-blue?style=flat-square)](https://www.iso.org/standard/66266.html)
 [![No Install](https://img.shields.io/badge/No%20Install-Open%20in%20Browser-green?style=flat-square)](#usage)
 
 ---
