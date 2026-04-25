@@ -3,7 +3,7 @@
 > IT & Technical Support · ISO 21001:2025 · Standalone HTML Application
 
 [![Version](https://img.shields.io/badge/Status-In%20Development-orange?style=flat-square)](#)
-[![ISO 21001](https://img.shields.io/badge/ISO%2021001-2018-blue?style=flat-square)](https://www.iso.org/standard/66266.html)
+[![ISO 21001](https://img.shields.io/badge/ISO%2021001-2025-blue?style=flat-square)](https://www.iso.org/standard/66266.html)
 
 ---
 
