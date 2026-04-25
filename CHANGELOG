@@ -1,1 +1,84 @@
+# 📋 Changelog
 
+All notable changes to ISTIC-QualityHub are documented here.
+Tous les changements notables d'ISTIC-QualityHub sont documentés ici.
+
+Format based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
+Versioning follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
+
+---
+
+## [Unreleased]
+
+### 🎫 Ticket Manager v1.0 *(in development)*
+- Core ticket management (create, assign, track, close)
+- Recurring tasks planner
+- SLA compliance dashboard
+
+---
+
+## [2.0.0] — Risk Manager v2 — 2025
+
+### Added
+- ✅ Custom institution logo upload (stored as base64, persists in localStorage)
+- ✅ Dynamic action checklist — sub-tasks with automatic progress calculation
+- ✅ Periodic review alerts on dashboard (overdue = red, due soon = orange)
+- ✅ Modification history / audit trail per risk and opportunity
+- ✅ Stakeholder communication log per risk (ISO 31000 §5.4)
+- ✅ Quality objectives linking — relate risks/opportunities to ISO 21001 §6.2 objectives
+- ✅ Management review module (ISO 21001 §9.3) with PDF report
+- ✅ Academic cycle filter (S1 / S2 / custom date range)
+- ✅ KPI dashboard — C3 treatment rate, action completion rate, avg closure delay, linking rate
+- ✅ Export Excel (XLSX) — 4 sheets: Risks / Opportunities / Action Plan / KPIs
+- ✅ Export JSON — full data backup
+- ✅ Import JSON — restore data, share between devices
+- ✅ Auto-update action status based on checklist completion (100% → Réalisée)
+- ✅ Header updated to show ISO 31000 / ISO 21001 compliance
+
+### Changed
+- Navigation header updated to include "Revue direction" tab
+- Settings page redesigned with logo upload zone
+- Action form: replaced manual progress slider with checklist system
+- PDF export updated with ISO compliance mention in footer
+
+### Fixed
+- Template literal syntax error in `renderRevue()` — semicolon inside `${}` expression caused full JS crash
+- `objectifs` array initialized correctly on first run
+
+---
+
+## [1.0.0] — Risk Manager v1 — 2025
+
+### Added
+- ✅ Risk register with V×G criticality matrix (C1/C2/C3)
+- ✅ Opportunity register with Efforts×Advantage matrix (P1/P2/P3)
+- ✅ Action plan with manual progress slider
+- ✅ Process and actor management in Settings
+- ✅ Interested parties register
+- ✅ Dashboard with risk/opportunity distribution charts
+- ✅ Effectiveness evaluation modal
+- ✅ PDF export (jsPDF + AutoTable, landscape A4)
+- ✅ Browser localStorage persistence
+- ✅ Dashboard stats: total risks, C3 risks, opportunities, actions, completed actions
+
+---
+
+## Version Numbering / Numérotation des versions
+
+```
+MAJOR.MINOR.PATCH
+
+MAJOR — Breaking change or complete redesign of an app
+MINOR — New feature added (backward compatible)
+PATCH — Bug fix or small improvement
+
+Examples:
+  1.0.0 → First release
+  1.1.0 → New feature added
+  1.1.1 → Bug fix
+  2.0.0 → Major redesign or new app added to suite
+```
+
+---
+
+*Part of [ISTIC-QualityHub](README.md)*
