@@ -3,7 +3,7 @@
 > **Quality Management & Operations Suite for Higher Education**
 > *Suite de gestion qualité et opérationnelle pour l'enseignement supérieur*
 
-[![ISO 21001](https://img.shields.io/badge/ISO%2021001-2018-blue?style=flat-square)](https://www.iso.org/standard/66266.html)
+[![ISO 21001](https://img.shields.io/badge/ISO%2021001-2025-blue?style=flat-square)](https://www.iso.org/standard/66266.html)
 [![ISO 31000](https://img.shields.io/badge/ISO%2031000-2018-purple?style=flat-square)](https://www.iso.org/standard/65694.html)
 [![License: MIT](https://img.shields.io/badge/License-MIT-green?style=flat-square)](LICENSE)
 [![Apps](https://img.shields.io/badge/Apps-1%20released-orange?style=flat-square)](#applications)
