@@ -120,6 +120,9 @@ See [LICENSE](LICENSE) for details.
 Université de Carthage — Tunisie
 🌐 [www.istic.rnu.tn](https://www.istic.rnu.tn) | 🌐 [www.ucar.tn](https://www.ucar.tn)
 
+> ⚠️ **Disclaimer** : Ce projet est une initiative personnelle de formation. 
+> Il n'est pas officiellement affilié à l'ISTIC ni à l'Université de Carthage. 
+> Les noms sont utilisés à titre informatif uniquement.
 ---
 
 *Built with ❤️ for quality-driven education — Construit avec ❤️ pour une éducation axée sur la qualité*
