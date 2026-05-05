@@ -17,7 +17,7 @@ Versioning follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ---
 
-## [2.0.0] — Risk Manager v2 — 2025
+## [2.0.0] — Risk Manager v2 — 2026
 
 ### Added
 - ✅ Custom institution logo upload (stored as base64, persists in localStorage)
@@ -47,7 +47,7 @@ Versioning follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ---
 
-## [1.0.0] — Risk Manager v1 — 2025
+## [1.0.0] — Risk Manager v1 — 2026
 
 ### Added
 - ✅ Risk register with V×G criticality matrix (C1/C2/C3)
